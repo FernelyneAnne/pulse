@@ -11,7 +11,18 @@ import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type Link, type PeerDot, type SignalMsg } from "@/lib/types";
 import { DEFAULT_VIBE, SPARKS, VIBES, pickSpark, vibeById } from "@/lib/vibes";
-import { EyeIcon, ShieldIcon, SparkIcon } from "./components/icons";
+import {
+  BackIcon,
+  EyeIcon,
+  NearbyIcon,
+  ShieldIcon,
+  SparkIcon,
+  TargetIcon,
+} from "./components/icons";
+import ThemeToggle from "./components/ThemeToggle";
+import NearbyPanel, { NEARBY_KM, type NearbyPeer } from "./components/NearbyPanel";
+import { useTheme } from "@/lib/theme";
+import { distanceKm } from "@/lib/geo";
 
 type Conn =
   | { kind: "idle" }
@@ -33,6 +44,10 @@ export default function Home() {
   const blockedRef = useRef(blocked);
   const [peerVibe, setPeerVibe] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [myVibeState, setMyVibeState] = useState(DEFAULT_VIBE);
+  const [recenterKey, setRecenterKey] = useState(0);
+  const [nearbyOpen, setNearbyOpen] = useState(false);
+  const theme = useTheme();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -189,8 +204,35 @@ export default function Home() {
     showNotice("Blocked. Their light is hidden for this visit.");
   }
 
+  // Back: leave this session and return to the entry screen (pick a new
+  // vibe). Ends any chat first so the other person isn't left hanging.
+  function goBack() {
+    const c = connRef.current;
+    if (
+      c.kind !== "idle" &&
+      !window.confirm("Leave this conversation and go back?")
+    ) {
+      return;
+    }
+    if (c.kind === "requesting") void sendSignal(c.peerId, "end");
+    if (c.kind === "incoming") void sendSignal(c.peerId, "decline");
+    if (c.kind === "connecting" || c.kind === "connected") {
+      void sendSignal(c.peerId, "end");
+    }
+    teardown();
+    leave();
+    peersRef.current = [];
+    setPeers([]);
+    setLinks([]);
+    setMyLocation(null);
+    setVibeFilter(null);
+    setNearbyOpen(false);
+    setPhase("gate");
+  }
+
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
+    setNearbyOpen(false);
     setPeerVibe(vibeOf(peerId));
     setConn({ kind: "requesting", peerId });
     void sendSignal(peerId, "request").then((ok) => {
@@ -404,6 +446,7 @@ export default function Home() {
   async function handleReady(lat: number, lng: number, vibe: string) {
     rawLocation.current = { lat, lng };
     myVibe.current = vibe;
+    setMyVibeState(vibe);
     const r = await join(lat, lng, vibe);
     // Show the user where OTHERS see them (the offset position).
     setMyLocation({ lat: r.lat, lng: r.lng });
@@ -418,6 +461,15 @@ export default function Home() {
       ? vibeById(peers.find((p) => p.id === conn.peerId)?.vibe)
       : null;
   const partnerVibe = peerVibe ? vibeById(peerVibe) : null;
+  const nearby: NearbyPeer[] = myLocation
+    ? visiblePeers
+        .map((p) => ({
+          ...p,
+          km: distanceKm(myLocation.lat, myLocation.lng, p.lat, p.lng),
+        }))
+        .filter((p) => p.km <= NEARBY_KM)
+        .sort((a, b) => a.km - b.km)
+    : [];
   const vibeCounts = new Map<string, number>();
   for (const p of visiblePeers) {
     if (!p.busy) vibeCounts.set(p.vibe, (vibeCounts.get(p.vibe) ?? 0) + 1);
@@ -435,17 +487,35 @@ export default function Home() {
         links={links}
         vibeFilter={vibeFilter}
         hiddenIds={blocked}
+        theme={theme}
+        recenterKey={recenterKey}
       />
 
-      {phase === "gate" && <EntryGate onReady={handleReady} />}
+      {phase === "gate" && (
+        <>
+          <EntryGate onReady={handleReady} initialVibe={myVibeState} />
+          <ThemeToggle className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-30" />
+        </>
+      )}
 
       {phase === "live" && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-          <p className="text-2xl font-extrabold tracking-[-0.04em]">
-            pulse
-            <span className="ml-1.5 inline-block h-2 w-2 animate-breathe rounded-full bg-amber align-middle" />
-          </p>
-          <p className="glass rounded-full px-4 py-2 text-sm" aria-live="polite">
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              onClick={goBack}
+              aria-label="Back to start (change vibe)"
+              title="Back to start"
+              className="glass grid h-10 w-10 place-items-center rounded-full transition hover:brightness-110"
+            >
+              <BackIcon />
+            </button>
+            <p className="text-2xl font-extrabold tracking-[-0.04em]">
+              pulse
+              <span className="ml-1.5 inline-block h-2 w-2 animate-breathe rounded-full bg-amber align-middle" />
+            </p>
+          </div>
+          <div className="pointer-events-auto flex items-center gap-2">
+          <p className="glass hidden rounded-full px-4 py-2 text-sm sm:block" aria-live="polite">
             <span className="font-bold text-amber">{visiblePeers.length}</span>{" "}
             {visiblePeers.length === 1 ? "light" : "lights"} on
             {links.length > 0 && (
@@ -457,6 +527,8 @@ export default function Home() {
               <span className="text-moon/55">, {freeCount} free to talk</span>
             )}
           </p>
+          <ThemeToggle />
+          </div>
         </header>
       )}
 
@@ -498,7 +570,7 @@ export default function Home() {
                   title={v.label}
                   aria-label={`${v.label}, ${n} free`}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm transition ${
-                    on ? "text-night" : "text-moon/75 hover:bg-moon/10"
+                    on ? "text-ink" : "text-moon/75 hover:bg-moon/10"
                   }`}
                   style={on ? { background: v.color } : undefined}
                 >
@@ -509,6 +581,47 @@ export default function Home() {
             })}
           </div>
         </nav>
+      )}
+
+      {phase === "live" && (conn.kind === "idle" || conn.kind === "requesting") && (
+        <div className="absolute right-4 top-20 z-20 flex flex-col items-end gap-2">
+          <p className="glass rounded-full px-3 py-1.5 text-xs sm:hidden" aria-live="polite">
+            <span className="font-bold text-amber">{visiblePeers.length}</span> on,{" "}
+            {freeCount} free
+          </p>
+          <button
+            onClick={() => setNearbyOpen((o) => !o)}
+            aria-pressed={nearbyOpen}
+            aria-label={`People nearby, ${nearby.length} within ${NEARBY_KM} km`}
+            className={`glass flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:brightness-110 ${
+              nearbyOpen ? "ring-2 ring-amber" : ""
+            }`}
+          >
+            <NearbyIcon className="h-4 w-4 text-amber" />
+            Nearby
+            <span className="grid min-w-6 place-items-center rounded-full bg-amber px-1.5 text-xs font-bold text-ink tabular-nums">
+              {nearby.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setRecenterKey((k) => k + 1)}
+            aria-label="Reset view: re-center the map on me"
+            title="Re-center on me"
+            className="glass flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:brightness-110"
+          >
+            <TargetIcon className="h-4 w-4" />
+            Reset view
+          </button>
+        </div>
+      )}
+
+      {phase === "live" && nearbyOpen && conn.kind === "idle" && (
+        <NearbyPanel
+          people={nearby}
+          canConnect={conn.kind === "idle"}
+          onConnect={requestConnection}
+          onClose={() => setNearbyOpen(false)}
+        />
       )}
 
       {notice && (

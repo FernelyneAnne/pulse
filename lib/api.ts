@@ -68,10 +68,12 @@ export async function sendSignal(
 }
 
 // Fire-and-forget leave that survives the tab closing. The server notifies
-// our partner (if any), so the chat ends for both sides.
+// our partner (if any), so the chat ends for both sides. The in-memory
+// credentials are dropped so nothing can reuse them.
 export function leave(): void {
   if (!session) return;
   const body = JSON.stringify(session);
+  session = null;
   if (typeof navigator !== "undefined" && navigator.sendBeacon) {
     navigator.sendBeacon("/api/leave", body);
   } else {

@@ -9,6 +9,45 @@ import { greatCircle } from "@/lib/geodesic";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
+type ThemeName = "dark" | "light";
+
+// Night-side Earth vs. dawn sky. Each theme owns its basemap, atmosphere and
+// arc colours; switching re-applies them on the new style.
+const LOOK: Record<
+  ThemeName,
+  {
+    style: string;
+    fog: Record<string, string | number>;
+    glow: string;
+    core: string;
+  }
+> = {
+  dark: {
+    style: "mapbox://styles/mapbox/dark-v11",
+    fog: {
+      color: "#232a5c",
+      "high-color": "#3a3384",
+      "horizon-blend": 0.05,
+      "space-color": "#090c22",
+      "star-intensity": 0.4,
+    },
+    glow: "#62e3c8",
+    core: "#d9fff6",
+  },
+  light: {
+    style: "mapbox://styles/mapbox/light-v11",
+    fog: {
+      color: "#f6f2ff",
+      "high-color": "#b9c6ff",
+      "horizon-blend": 0.06,
+      "space-color": "#dfe5ff",
+      "star-intensity": 0,
+    },
+    glow: "#14b896",
+    core: "#0b6f5c",
+  },
+};
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -23,6 +62,17 @@ function delayFor(id: string): string {
   return `${(Math.abs(h) % 2800) / 1000}s`;
 }
 
+function linesFor(links: Link[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: links.map(([a, b, c, d]) => ({
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: greatCircle(a, b, c, d) },
+    })),
+  };
+}
+
 export default function WorldMap({
   peers,
   me,
@@ -33,6 +83,8 @@ export default function WorldMap({
   links,
   vibeFilter,
   hiddenIds,
+  theme,
+  recenterKey,
 }: {
   peers: PeerDot[];
   me: { lat: number; lng: number } | null;
@@ -43,12 +95,18 @@ export default function WorldMap({
   links: Link[];
   vibeFilter: string | null;
   hiddenIds: ReadonlySet<string>;
+  theme: ThemeName;
+  recenterKey: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
   const meMarkerRef = useRef<Marker | null>(null);
   const [ready, setReady] = useState(false);
+  const themeRef = useRef<ThemeName>(theme);
+  const appliedThemeRef = useRef<ThemeName>(theme);
+  const linksRef = useRef<Link[]>(links);
+  const meRef = useRef(me);
 
   const onPeerClickRef = useRef(onPeerClick);
   const canConnectRef = useRef(canConnect);
@@ -57,6 +115,9 @@ export default function WorldMap({
     onPeerClickRef.current = onPeerClick;
     canConnectRef.current = canConnect;
     spinningRef.current = spinning;
+    themeRef.current = theme;
+    linksRef.current = links;
+    meRef.current = me;
   });
 
   // Initialise the globe once.
@@ -72,7 +133,7 @@ export default function WorldMap({
       mapboxgl.accessToken = TOKEN;
       const map = new mapboxgl.Map({
         container: containerRef.current,
-        style: "mapbox://styles/mapbox/dark-v11",
+        style: LOOK[themeRef.current].style,
         projection: "globe",
         center: [40, 18],
         zoom: 1.6,
@@ -82,44 +143,43 @@ export default function WorldMap({
         new mapboxgl.AttributionControl({ compact: true }),
         "bottom-right",
       );
+      // Runs for the first style and again after every theme switch
+      // (setStyle drops custom sources/layers).
       map.on("style.load", () => {
-        map.setFog({
-          color: "#232a5c",
-          "high-color": "#3a3384",
-          "horizon-blend": 0.05,
-          "space-color": "#090c22",
-          "star-intensity": 0.4,
-        });
+        const look = LOOK[themeRef.current];
+        map.setFog(look.fog);
+        if (!map.getSource("links")) {
+          map.addSource("links", { type: "geojson", data: linesFor(linksRef.current) });
+        }
+        if (!map.getLayer("links-glow")) {
+          map.addLayer({
+            id: "links-glow",
+            type: "line",
+            source: "links",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: {
+              "line-color": look.glow,
+              "line-width": 8,
+              "line-blur": 6,
+              "line-opacity": 0.45,
+            },
+          });
+        }
+        if (!map.getLayer("links-core")) {
+          map.addLayer({
+            id: "links-core",
+            type: "line",
+            source: "links",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: {
+              "line-color": look.core,
+              "line-width": 1.4,
+              "line-opacity": 0.9,
+            },
+          });
+        }
       });
       map.on("load", () => {
-        // Live conversation arcs: soft glow + bright core.
-        map.addSource("links", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-        map.addLayer({
-          id: "links-glow",
-          type: "line",
-          source: "links",
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": "#62e3c8",
-            "line-width": 8,
-            "line-blur": 6,
-            "line-opacity": 0.45,
-          },
-        });
-        map.addLayer({
-          id: "links-core",
-          type: "line",
-          source: "links",
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": "#d9fff6",
-            "line-width": 1.4,
-            "line-opacity": 0.9,
-          },
-        });
         if (!cancelled) setReady(true);
       });
       mapRef.current = map;
@@ -161,10 +221,16 @@ export default function WorldMap({
     };
   }, []);
 
-  // Place "you" and fly down to it — the one big motion moment.
+  // Place "you" and fly down to it — the one big motion moment. Runs again
+  // after going back and re-entering (new session, new spot).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !me) return;
+    if (!map || !ready) return;
+    if (!me) {
+      meMarkerRef.current?.remove();
+      meMarkerRef.current = null;
+      return;
+    }
     let cancelled = false;
 
     (async () => {
@@ -177,23 +243,42 @@ export default function WorldMap({
         meMarkerRef.current = new mapboxgl.Marker({ element: el })
           .setLngLat([me.lng, me.lat])
           .addTo(map);
-        map.flyTo({
-          center: [me.lng, me.lat],
-          zoom: 3.4,
-          speed: 0.9,
-          curve: 1.6,
-          essential: false,
-          duration: prefersReducedMotion() ? 0 : 3200,
-        });
       } else {
         meMarkerRef.current.setLngLat([me.lng, me.lat]);
       }
+      map.flyTo({
+        center: [me.lng, me.lat],
+        zoom: 3.4,
+        speed: 0.9,
+        curve: 1.6,
+        duration: prefersReducedMotion() ? 0 : 3200,
+      });
     })();
 
     return () => {
       cancelled = true;
     };
   }, [me, ready]);
+
+  // "Reset view": fly back to your own light at a neighbourhood zoom.
+  useEffect(() => {
+    const map = mapRef.current;
+    const pos = meRef.current;
+    if (!map || !ready || !pos || recenterKey === 0) return;
+    map.flyTo({
+      center: [pos.lng, pos.lat],
+      zoom: 11,
+      duration: prefersReducedMotion() ? 0 : 1600,
+    });
+  }, [recenterKey, ready]);
+
+  // Theme switch → swap basemap; style.load re-applies fog + arc layers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || appliedThemeRef.current === theme) return;
+    appliedThemeRef.current = theme;
+    map.setStyle(LOOK[theme].style);
+  }, [theme, ready]);
 
   // Reconcile peer lights.
   useEffect(() => {
@@ -261,14 +346,7 @@ export default function WorldMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     const src = map.getSource("links") as GeoJSONSource | undefined;
-    src?.setData({
-      type: "FeatureCollection",
-      features: links.map(([a, b, c, d]) => ({
-        type: "Feature",
-        properties: {},
-        geometry: { type: "LineString", coordinates: greatCircle(a, b, c, d) },
-      })),
-    });
+    src?.setData(linesFor(links)); // if the style is mid-swap, style.load applies it
   }, [links, ready]);
 
   return (
