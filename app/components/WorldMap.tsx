@@ -131,9 +131,12 @@ export default function WorldMap({
       const mapboxgl = (await import("mapbox-gl")).default;
       if (cancelled || !containerRef.current) return;
       mapboxgl.accessToken = TOKEN;
+      // Start in whatever theme is actually on <html> right now.
+      appliedThemeRef.current =
+        document.documentElement.dataset.theme === "light" ? "light" : "dark";
       const map = new mapboxgl.Map({
         container: containerRef.current,
-        style: LOOK[themeRef.current].style,
+        style: LOOK[appliedThemeRef.current].style,
         projection: "globe",
         center: [40, 18],
         zoom: 1.6,
@@ -143,11 +146,12 @@ export default function WorldMap({
         new mapboxgl.AttributionControl({ compact: true }),
         "bottom-right",
       );
-      // Runs for the first style and again after every theme switch
-      // (setStyle drops custom sources/layers).
-      map.on("style.load", () => {
-        const look = LOOK[themeRef.current];
-        map.setFog(look.fog);
+      // Re-applies fog + arc layers for the current theme. Idempotent; runs
+      // for the first style and after every theme switch, since swapping the
+      // basemap drops custom sources/layers.
+      const ensureLayers = () => {
+        if (!map.isStyleLoaded()) return;
+        const look = LOOK[appliedThemeRef.current];
         if (!map.getSource("links")) {
           map.addSource("links", { type: "geojson", data: linesFor(linksRef.current) });
         }
@@ -173,12 +177,18 @@ export default function WorldMap({
             layout: { "line-cap": "round", "line-join": "round" },
             paint: {
               "line-color": look.core,
-              "line-width": 1.4,
-              "line-opacity": 0.9,
+              "line-width": 1.6,
+              "line-opacity": 0.95,
             },
           });
         }
+      };
+      map.on("style.load", () => {
+        map.setFog(LOOK[appliedThemeRef.current].fog);
+        ensureLayers();
       });
+      // Safety net: if anything else swaps the style, put the arcs back.
+      map.on("styledata", ensureLayers);
       map.on("load", () => {
         if (!cancelled) setReady(true);
       });
@@ -240,6 +250,7 @@ export default function WorldMap({
         const el = document.createElement("div");
         el.className = "pulse-me";
         el.title = "You (others see you here)";
+        el.innerHTML = '<span class="pulse-me-label">You</span>';
         meMarkerRef.current = new mapboxgl.Marker({ element: el })
           .setLngLat([me.lng, me.lat])
           .addTo(map);
@@ -277,7 +288,9 @@ export default function WorldMap({
     const map = mapRef.current;
     if (!map || !ready || appliedThemeRef.current === theme) return;
     appliedThemeRef.current = theme;
-    map.setStyle(LOOK[theme].style);
+    // diff:false forces a full reload; a diffed swap silently deletes our
+    // custom arc layers and never fires style.load.
+    map.setStyle(LOOK[theme].style, { diff: false });
   }, [theme, ready]);
 
   // Reconcile peer lights.
