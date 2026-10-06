@@ -24,14 +24,20 @@ export default function ConnectionPrompt({
   badge?: React.ReactNode;
 }) {
   const acceptRef = useRef<HTMLButtonElement>(null);
+  const onDeclineRef = useRef(onDecline);
+  useEffect(() => {
+    onDeclineRef.current = onDecline;
+  });
+
+  // Focus the primary action once, and let Esc decline.
   useEffect(() => {
     acceptRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onDecline();
+      if (e.key === "Escape") onDeclineRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onDecline]);
+  }, []);
 
   const R = 22;
   const len = 2 * Math.PI * R;
