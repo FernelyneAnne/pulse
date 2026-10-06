@@ -17,6 +17,7 @@ model Presence {
   lat           Float // ALREADY privacy-offset coords (raw is never stored)
   lng           Float
   busy          Boolean   @default(false) // true while in an active connection
+  vibe          String    @default("chill") // what the user is up for (allowlisted)
   peerId        String? // who this user is connected to (server-enforced pairing)
   pendingTo     String? // outstanding connection request this user sent
   lastRequestAt DateTime? // request rate limiting

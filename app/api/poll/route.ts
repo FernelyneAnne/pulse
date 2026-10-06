@@ -4,7 +4,7 @@ import { STALE_MS, SIGNAL_TTL_MS } from "@/lib/presence";
 import { authenticate } from "@/lib/auth";
 import { removeSessions } from "@/lib/session";
 import { error, json, safe } from "@/lib/http";
-import type { PollResponse, SignalType } from "@/lib/types";
+import type { Link, PollResponse, SignalType } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,12 +40,25 @@ export const GET = safe(async (request: NextRequest) => {
   await removeSessions(stale.map((s) => s.id));
   await prisma.signal.deleteMany({ where: { createdAt: { lt: signalCutoff } } });
 
-  // 3) Online peers, excluding self. Only public, offset data is returned.
-  const peers = await prisma.presence.findMany({
-    where: { id: { not: id }, lastSeen: { gte: staleCutoff } },
-    select: { id: true, lat: true, lng: true, busy: true },
+  // 3) Online peers (excluding self) + live conversation arcs. Only public,
+  // offset data leaves the server; pairings are returned as coordinates only.
+  const online = await prisma.presence.findMany({
+    where: { lastSeen: { gte: staleCutoff } },
+    select: { id: true, lat: true, lng: true, busy: true, vibe: true, peerId: true },
     take: 2000,
   });
+  const byId = new Map<string, (typeof online)[number]>(
+    online.map((p) => [p.id, p]),
+  );
+  const links: Link[] = [];
+  for (const p of online) {
+    if (!p.peerId || p.id > p.peerId) continue; // each pair once
+    const q = byId.get(p.peerId);
+    if (q && q.peerId === p.id) links.push([p.lng, p.lat, q.lng, q.lat]);
+  }
+  const peers = online
+    .filter((p) => p.id !== id)
+    .map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, busy: p.busy, vibe: p.vibe }));
 
   // 4) Drain this user's mailbox: read, then delete exactly what we read so a
   // concurrently-inserted signal is never lost.
@@ -62,6 +75,7 @@ export const GET = safe(async (request: NextRequest) => {
 
   const response: PollResponse = {
     peers,
+    links,
     signals: inbox.map((s) => ({
       id: s.id,
       fromId: s.fromId,

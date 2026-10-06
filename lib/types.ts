@@ -15,7 +15,12 @@ export interface PeerDot {
   lat: number;
   lng: number;
   busy: boolean;
+  vibe: string;
 }
+
+// An active conversation, as two (offset) endpoints: [lng1, lat1, lng2, lat2].
+// No ids — the map only shows THAT people are talking, not who.
+export type Link = [number, number, number, number];
 
 export interface SignalMsg {
   id: string;
@@ -28,5 +33,6 @@ export interface SignalMsg {
 
 export interface PollResponse {
   peers: PeerDot[];
+  links: Link[];
   signals: SignalMsg[];
 }

@@ -22,11 +22,15 @@ export interface JoinResult {
   lng: number;
 }
 
-export async function join(lat: number, lng: number): Promise<JoinResult> {
+export async function join(
+  lat: number,
+  lng: number,
+  vibe?: string,
+): Promise<JoinResult> {
   const res = await fetch("/api/join", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lat, lng }),
+    body: JSON.stringify({ lat, lng, vibe }),
   });
   if (!res.ok) throw new Error(`join failed: ${res.status}`);
   const data = (await res.json()) as JoinResult & { token: string };
