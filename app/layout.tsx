@@ -1,20 +1,22 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const pulseFont = Bricolage_Grotesque({
+  variable: "--font-pulse",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "Pulse",
-  description: "A living globe of anonymous strangers. Tap a dot, start talking.",
+  description: "Strangers glow on a night-side Earth. Tap a light, start talking.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#14183a",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -23,11 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${pulseFont.variable} h-full`}>
+      <body className="h-full overflow-hidden">{children}</body>
     </html>
   );
 }

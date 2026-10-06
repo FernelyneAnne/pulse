@@ -1,79 +1,186 @@
 @import "tailwindcss";
 
+/* Pulse — night-side Earth. People are city lights. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --night: #14183a;
+  --dusk: #2b2f63;
+  --amber: #ffb238;
+  --moon: #eceefb;
+  --aurora: #62e3c8;
+  --danger: #ff6b6b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-night: var(--night);
+  --color-dusk: var(--dusk);
+  --color-amber: var(--amber);
+  --color-moon: var(--moon);
+  --color-aurora: var(--aurora);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-pulse);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
+  background: var(--night);
+  color: var(--moon);
+  font-family: var(--font-pulse), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Live user dots on the map */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+/* Frosted panels that float over the globe. */
+.glass {
+  background: color-mix(in oklab, var(--night) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid color-mix(in oklab, var(--moon) 12%, transparent);
+}
+
+/* ---------- Map lights ---------- */
 .pulse-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 9999px;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 0 0 0 rgba(255, 255, 255, 0.5);
-  animation: pulse-ring 2s ease-out infinite;
-  transition: transform 0.1s ease;
-}
-
-.pulse-dot:hover {
-  transform: scale(1.3);
-}
-
-/* The user's own "you are here" pin — small, sized like the dots. */
-.pulse-me {
+  --c: var(--amber);
   position: relative;
-  font-size: 18px;
-  line-height: 1;
-  cursor: default;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: radial-gradient(circle, #fff 0 22%, var(--c) 45%);
+  box-shadow:
+    0 0 6px 1px var(--c),
+    0 0 18px 4px color-mix(in oklab, var(--c) 45%, transparent);
+  transition:
+    transform 0.18s ease,
+    opacity 0.3s ease,
+    filter 0.3s ease;
+}
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid var(--c);
+  opacity: 0;
+  animation: pulse-ring 2.8s ease-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+.pulse-dot:hover,
+.pulse-dot:focus-visible {
+  transform: scale(1.6);
+}
+.pulse-dot[data-busy="true"] {
+  opacity: 0.35;
+  filter: grayscale(0.6);
+  cursor: not-allowed;
+}
+.pulse-dot[data-busy="true"]::after {
+  animation: none;
+}
+.pulse-dot[data-ringing="true"]::after {
+  animation-duration: 1s;
+}
+.pulse-dot[data-hidden="true"] {
+  opacity: 0.08;
+  pointer-events: none;
 }
 
-.pulse-me-label {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 1px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 0 5px;
+.pulse-me {
+  width: 16px;
+  height: 16px;
   border-radius: 9999px;
-  white-space: nowrap;
+  background: var(--moon);
+  border: 3px solid var(--night);
+  box-shadow:
+    0 0 0 2px var(--moon),
+    0 0 22px 6px color-mix(in oklab, var(--moon) 40%, transparent);
 }
 
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0);
+    transform: scale(0.6);
+    opacity: 0.9;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* ---------- Motion helpers ---------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.8);
+  }
+}
+@keyframes countdown {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: var(--len);
+  }
+}
+.animate-rise {
+  animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-slide-in {
+  animation: slide-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-breathe {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+/* Mapbox chrome, toned down to match. */
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-logo {
+  opacity: 0.45;
+}
+.mapboxgl-ctrl-attrib {
+  background: transparent !important;
+}
+.mapboxgl-ctrl-attrib a {
+  color: var(--moon) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
