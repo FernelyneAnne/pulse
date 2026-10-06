@@ -6,7 +6,7 @@ Git history is split into small commits that follow the same order.
 ## Setup decisions
 
 - **Database:** Vercel Postgres (Neon, provisioned from the Vercel Marketplace). It injects `DATABASE_URL` (pooled) into the project, which the app uses at runtime; the schema was pushed with the unpooled URL. Prisma 7 talks to Postgres through the `pg` driver adapter and the code avoids interactive transactions, so it is safe behind a pooler. No other external services.
-- **Schema changes** ship as migrations in `prisma/migrations` and also work with `npx prisma db push` as the README describes.
+- **Schema changes** ship as migrations in `prisma/migrations`. The build runs `prisma migrate deploy`, so every Vercel deploy creates or updates the tables automatically (using the unpooled URL Neon provides); `npx prisma db push` still works locally as the README describes.
 
 ---
 
