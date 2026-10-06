@@ -156,6 +156,13 @@ export class PeerSession {
     return this.localStream;
   }
 
+  setTrackEnabled(kind: "audio" | "video", enabled: boolean) {
+    this.localStream
+      ?.getTracks()
+      .filter((t) => t.kind === kind)
+      .forEach((t) => (t.enabled = enabled));
+  }
+
   stopVideo() {
     if (this.localStream) {
       for (const track of this.localStream.getTracks()) track.stop();
