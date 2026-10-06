@@ -2,18 +2,19 @@
 
 import { useState } from "react";
 
+// Floats over the slowly turning globe. One job: get location, then enter.
 export default function EntryGate({
   onReady,
 }: {
   onReady: (lat: number, lng: number) => Promise<void>;
 }) {
   const [status, setStatus] = useState<"idle" | "locating" | "error">("idle");
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
   function enter() {
     if (!("geolocation" in navigator)) {
       setStatus("error");
-      setError("Your browser doesn't support location access.");
+      setError("This browser can't share a location, so Pulse can't place you.");
       return;
     }
     setStatus("locating");
@@ -21,48 +22,53 @@ export default function EntryGate({
       (pos) => {
         onReady(pos.coords.latitude, pos.coords.longitude).catch(() => {
           setStatus("error");
-          setError("Couldn't reach Pulse. Please try again.");
+          setError("Couldn't reach Pulse. Check your connection and try again.");
         });
       },
       (err) => {
         setStatus("error");
         setError(
           err.code === err.PERMISSION_DENIED
-            ? "Location permission is required to place you on the map."
-            : "Couldn't get your location. Please try again.",
+            ? "Location is blocked. Allow it in your browser's site settings, then try again."
+            : "Couldn't find your location. Try again in a moment.",
         );
       },
-      // High accuracy + maximumAge:0 forces a fresh fix (Wi-Fi/GPS scan)
-      // instead of reusing the browser's cached IP-based location.
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-8 bg-zinc-950 p-6 text-zinc-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Pulse</h1>
-        <p className="mt-2 max-w-sm text-zinc-400">
-          A living globe of anonymous strangers. Drop onto the map and connect.
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center bg-gradient-to-t from-night via-night/40 to-transparent p-5 pb-[max(2rem,env(safe-area-inset-bottom))] sm:items-center sm:bg-none">
+      <div className="pointer-events-auto w-full max-w-md animate-rise">
+        <h1 className="text-[clamp(3.5rem,12vw,6.5rem)] font-extrabold leading-[0.85] tracking-[-0.05em] text-moon">
+          pulse
+          <span className="ml-2 inline-block h-3.5 w-3.5 animate-breathe rounded-full bg-amber align-middle shadow-[0_0_24px_6px_rgba(255,178,56,0.6)]" />
+        </h1>
+        <p className="mt-5 max-w-sm text-lg leading-snug text-moon/80">
+          Everyone awake right now is a light on this globe. Tap one and say
+          hello. No names, no history.
+        </p>
+
+        <button
+          onClick={enter}
+          disabled={status === "locating"}
+          className="mt-8 w-full rounded-2xl bg-amber px-6 py-4 text-lg font-bold text-night shadow-[0_10px_40px_-10px_rgba(255,178,56,0.8)] transition hover:brightness-110 active:scale-[0.98] disabled:opacity-70 sm:w-auto"
+        >
+          {status === "locating" ? "Finding you…" : "Turn on my light"}
+        </button>
+
+        {status === "error" && (
+          <p role="alert" className="mt-4 max-w-sm text-sm text-danger">
+            {error}
+          </p>
+        )}
+
+        <p className="mt-6 max-w-sm text-sm leading-relaxed text-moon/55">
+          Your light lands 1–3 km from where you are, in a new spot every visit.
+          Chat and video go straight between browsers and are never stored.
+          Close the tab and you&rsquo;re gone.
         </p>
       </div>
-
-      <button
-        onClick={enter}
-        disabled={status === "locating"}
-        className="rounded-full bg-emerald-400 px-8 py-3 font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:opacity-60"
-      >
-        {status === "locating" ? "Locating…" : "Enter Pulse"}
-      </button>
-
-      {status === "error" && (
-        <p className="max-w-sm text-center text-sm text-red-400">{error}</p>
-      )}
-
-      <p className="max-w-sm text-center text-xs text-zinc-500">
-        No sign-up. Your dot is placed 1–3&nbsp;km from your real location.
-        Nothing is stored — closing the tab ends everything.
-      </p>
     </div>
   );
 }
