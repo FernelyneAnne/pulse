@@ -21,6 +21,7 @@ import {
 } from "./components/icons";
 import ThemeToggle from "./components/ThemeToggle";
 import NearbyPanel, { NEARBY_KM, type NearbyPeer } from "./components/NearbyPanel";
+import SwipeDeck from "./components/SwipeDeck";
 import { useTheme } from "@/lib/theme";
 import { distanceKm } from "@/lib/geo";
 
@@ -47,6 +48,7 @@ export default function Home() {
   const [myVibeState, setMyVibeState] = useState(DEFAULT_VIBE);
   const [recenterKey, setRecenterKey] = useState(0);
   const [nearbyOpen, setNearbyOpen] = useState(false);
+  const [swipeOpen, setSwipeOpen] = useState(false);
   const theme = useTheme();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -227,6 +229,7 @@ export default function Home() {
     setMyLocation(null);
     setVibeFilter(null);
     setNearbyOpen(false);
+    setSwipeOpen(false);
     setPhase("gate");
   }
 
@@ -470,6 +473,16 @@ export default function Home() {
         .filter((p) => p.km <= NEARBY_KM)
         .sort((a, b) => a.km - b.km)
     : [];
+  // Swipe deck: everyone visible (respecting the vibe filter), nearest first.
+  const deckPeople: NearbyPeer[] = myLocation
+    ? visiblePeers
+        .filter((p) => vibeFilter === null || p.vibe === vibeFilter)
+        .map((p) => ({
+          ...p,
+          km: distanceKm(myLocation.lat, myLocation.lng, p.lat, p.lng),
+        }))
+        .sort((a, b) => a.km - b.km)
+    : [];
   const vibeCounts = new Map<string, number>();
   for (const p of visiblePeers) {
     if (!p.busy) vibeCounts.set(p.vibe, (vibeCounts.get(p.vibe) ?? 0) + 1);
@@ -583,12 +596,21 @@ export default function Home() {
         </nav>
       )}
 
-      {phase === "live" && (conn.kind === "idle" || conn.kind === "requesting") && (
+      {phase === "live" && !swipeOpen && (conn.kind === "idle" || conn.kind === "requesting") && (
         <div className="absolute right-4 top-20 z-20 flex flex-col items-end gap-2">
           <p className="glass rounded-full px-3 py-1.5 text-xs sm:hidden" aria-live="polite">
             <span className="font-bold text-amber">{visiblePeers.length}</span> on,{" "}
             {freeCount} free
           </p>
+          <button
+            onClick={() => {
+              setNearbyOpen(false);
+              setSwipeOpen(true);
+            }}
+            className="flex items-center gap-2 rounded-full bg-amber px-5 py-3 text-sm font-extrabold text-ink shadow-[0_10px_30px_-8px_rgba(255,178,56,0.8)] transition hover:scale-105 active:scale-95"
+          >
+            <span aria-hidden>💫</span> Start swiping
+          </button>
           <button
             onClick={() => setNearbyOpen((o) => !o)}
             aria-pressed={nearbyOpen}
@@ -613,6 +635,18 @@ export default function Home() {
             Reset view
           </button>
         </div>
+      )}
+
+      {/* Stays mounted while you knock/chat so skipped cards are remembered;
+          after a decline or a finished chat you land back in the deck. */}
+      {phase === "live" && swipeOpen && (
+        <SwipeDeck
+          hidden={conn.kind !== "idle"}
+          people={deckPeople}
+          canConnect={conn.kind === "idle"}
+          onConnect={requestConnection}
+          onClose={() => setSwipeOpen(false)}
+        />
       )}
 
       {phase === "live" && nearbyOpen && conn.kind === "idle" && (

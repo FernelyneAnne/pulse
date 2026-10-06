@@ -86,6 +86,8 @@ Ranked by impact. All Critical and High items are fixed.
 
 - **Nearby:** a panel listing everyone online within about 3 km, anonymously (vibe, rough distance, free or talking) with a Connect button. Distances are computed in the browser from the same offset positions already shown on the map, so no new data leaves the server. Because every light is moved 1–3 km, two people in the same building can appear up to ~6 km apart; distances are rounded and labelled "about", and the panel says why.
 
+- **Swipe deck (dating-app style):** "Start swiping" shows one stranger per card, nearest first: big vibe emoji on a vibe-coloured card, vibe and rough distance. Swipe or drag right to knock, left to skip, with round skip / hello / undo buttons and ← → / Backspace on the keyboard. The deck stays mounted during a request or chat, so skipped cards are remembered and you land back in the deck when a chat ends or a request is declined. Uses Pulse's own palette and no third-party branding.
+
 **Safe**
 - **Safe Reveal:** the stranger's video starts heavily blurred. Audio flows, so you can talk first and show the picture when you're comfortable.
 - **Block and leave:** ends the chat, hides their light, and auto-declines them for the rest of the visit.
