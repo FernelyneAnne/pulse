@@ -93,7 +93,7 @@ export default function ConnectionPrompt({
           <button
             ref={acceptRef}
             onClick={onAccept}
-            className="rounded-2xl bg-amber px-4 py-3 font-bold text-night transition hover:brightness-110 active:scale-[0.98]"
+            className="rounded-2xl bg-amber px-4 py-3 font-bold text-ink transition hover:brightness-110 active:scale-[0.98]"
           >
             {acceptLabel}
           </button>

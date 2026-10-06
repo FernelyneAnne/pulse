@@ -93,7 +93,7 @@ export default function VideoPanel({
         <button
           onClick={onEnd}
           aria-label="End video and return to chat"
-          className={`${ctrl} w-auto gap-2 bg-danger px-6 font-bold text-night hover:brightness-110`}
+          className={`${ctrl} w-auto gap-2 bg-danger px-6 font-bold text-ink hover:brightness-110`}
         >
           <PhoneOffIcon /> End video
         </button>

@@ -6,12 +6,14 @@ import { DEFAULT_VIBE, VIBES } from "@/lib/vibes";
 // Floats over the slowly turning globe. One job: get location, then enter.
 export default function EntryGate({
   onReady,
+  initialVibe = DEFAULT_VIBE,
 }: {
   onReady: (lat: number, lng: number, vibe: string) => Promise<void>;
+  initialVibe?: string;
 }) {
   const [status, setStatus] = useState<"idle" | "locating" | "error">("idle");
   const [error, setError] = useState("");
-  const [vibe, setVibe] = useState(DEFAULT_VIBE);
+  const [vibe, setVibe] = useState(initialVibe);
 
   function enter() {
     if (!("geolocation" in navigator)) {
@@ -66,7 +68,7 @@ export default function EntryGate({
                   aria-pressed={on}
                   className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition ${
                     on
-                      ? "border-transparent text-night"
+                      ? "border-transparent text-ink"
                       : "border-moon/15 bg-night/40 text-moon/85 hover:border-moon/35"
                   }`}
                   style={on ? { background: v.color } : undefined}
@@ -82,7 +84,7 @@ export default function EntryGate({
         <button
           onClick={enter}
           disabled={status === "locating"}
-          className="mt-7 w-full rounded-2xl bg-amber px-6 py-4 text-lg font-bold text-night shadow-[0_10px_40px_-10px_rgba(255,178,56,0.8)] transition hover:brightness-110 active:scale-[0.98] disabled:opacity-70 sm:w-auto"
+          className="mt-7 w-full rounded-2xl bg-amber px-6 py-4 text-lg font-bold text-ink shadow-[0_10px_40px_-10px_rgba(255,178,56,0.8)] transition hover:brightness-110 active:scale-[0.98] disabled:opacity-70 sm:w-auto"
         >
           {status === "locating" ? "Finding you…" : "Turn on my light"}
         </button>

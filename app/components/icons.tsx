@@ -59,3 +59,32 @@ export const EyeIcon = ({ className = "h-5 w-5" }: P) => (
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
+export const SunIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+  </svg>
+);
+export const MoonIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+  </svg>
+);
+export const BackIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <path d="M15 5l-7 7 7 7" />
+  </svg>
+);
+export const TargetIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <circle cx="12" cy="12" r="7" />
+    <circle cx="12" cy="12" r="2.5" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+  </svg>
+);
+export const NearbyIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <circle cx="12" cy="12" r="2" />
+    <path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2" />
+  </svg>
+);

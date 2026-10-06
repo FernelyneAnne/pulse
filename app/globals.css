@@ -2,12 +2,26 @@
 
 /* Pulse — night-side Earth. People are city lights. */
 :root {
+  /* Night (dark) theme — default. --night is the surface, --moon the text. */
   --night: #14183a;
   --dusk: #2b2f63;
   --amber: #ffb238;
   --moon: #eceefb;
   --aurora: #62e3c8;
   --danger: #ff6b6b;
+  --ink: #14183a; /* text on bright fills, identical in both themes */
+  color-scheme: dark;
+}
+
+/* Day (light) theme: dawn sky. Same roles, inverted surfaces. */
+:root[data-theme="light"] {
+  --night: #f3f1fa;
+  --dusk: #dcd8f0;
+  --amber: #c97500; /* deeper so amber text stays readable on light */
+  --moon: #1b1f45;
+  --aurora: #0f9f84;
+  --danger: #e5484d;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -17,6 +31,7 @@
   --color-moon: var(--moon);
   --color-aurora: var(--aurora);
   --color-danger: var(--danger);
+  --color-ink: var(--ink);
   --font-sans: var(--font-pulse);
 }
 
@@ -70,6 +85,9 @@ body {
   opacity: 0;
   animation: pulse-ring 2.8s ease-out infinite;
   animation-delay: var(--delay, 0s);
+}
+[data-theme="light"] .pulse-dot {
+  outline: 1.5px solid rgba(27, 31, 69, 0.45);
 }
 .pulse-dot:hover,
 .pulse-dot:focus-visible {
@@ -170,6 +188,10 @@ body {
 }
 .mapboxgl-ctrl-attrib {
   background: transparent !important;
+}
+[data-theme="light"] .mapboxgl-ctrl-attrib a,
+[data-theme="light"] .mapboxgl-ctrl-attrib {
+  color: var(--moon) !important;
 }
 .mapboxgl-ctrl-attrib a {
   color: var(--moon) !important;

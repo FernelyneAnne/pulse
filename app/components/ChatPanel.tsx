@@ -85,7 +85,7 @@ export default function ChatPanel({
           onClick={onEnd}
           aria-label="Leave chat"
           title="Leave chat"
-          className="grid h-10 w-10 place-items-center rounded-full bg-danger text-night transition hover:brightness-110"
+          className="grid h-10 w-10 place-items-center rounded-full bg-danger text-ink transition hover:brightness-110"
         >
           <PhoneOffIcon />
         </button>
@@ -119,7 +119,7 @@ export default function ChatPanel({
               <p
                 className={`max-w-[80%] whitespace-pre-wrap break-words px-4 py-2 text-[15px] leading-snug ${
                   m.mine
-                    ? "rounded-2xl rounded-br-md bg-amber text-night"
+                    ? "rounded-2xl rounded-br-md bg-amber text-ink"
                     : "rounded-2xl rounded-bl-md bg-moon/10 text-moon"
                 }`}
               >
@@ -151,7 +151,7 @@ export default function ChatPanel({
           type="submit"
           disabled={!connected || !draft.trim()}
           aria-label="Send message"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber text-night transition hover:brightness-110 active:scale-95 disabled:opacity-35"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber text-ink transition hover:brightness-110 active:scale-95 disabled:opacity-35"
         >
           <SendIcon />
         </button>
