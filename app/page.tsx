@@ -148,6 +148,14 @@ export default function Home() {
     peerRef.current = ps;
   }
 
+  function announceMedia(stream: MediaStream) {
+    if (stream.getTracks().length === 0) {
+      showNotice("Camera and mic unavailable. You can still see and hear them.");
+    } else if (stream.getVideoTracks().length === 0) {
+      showNotice("Camera unavailable (maybe in use elsewhere). Joined with your mic only.");
+    }
+  }
+
   function handleControl(ctrl: PeerControl) {
     const ps = peerRef.current;
     switch (ctrl) {
@@ -160,9 +168,7 @@ export default function Home() {
             .then((stream) => {
               setLocalStream(stream);
               setCamOn(stream.getVideoTracks().length > 0);
-              if (stream.getVideoTracks().length === 0) {
-                showNotice("Camera unavailable, joined with your mic only.");
-              }
+              announceMedia(stream);
               setVideo("active");
             })
             .catch((err) => {
@@ -307,9 +313,7 @@ export default function Home() {
       .then((stream) => {
         setLocalStream(stream);
         setCamOn(stream.getVideoTracks().length > 0);
-        if (stream.getVideoTracks().length === 0) {
-          showNotice("Camera unavailable, joined with your mic only.");
-        }
+        announceMedia(stream);
         ps.sendControl("video-accept");
         setVideo("active");
       })
@@ -470,6 +474,12 @@ export default function Home() {
 
   const inChat = conn.kind === "connecting" || conn.kind === "connected";
   const visiblePeers = peers.filter((p) => !blocked.has(p.id));
+  const partnerId =
+    conn.kind === "connecting" || conn.kind === "connected" ? conn.peerId : null;
+  const partnerPeer = partnerId ? peers.find((p) => p.id === partnerId) : undefined;
+  const partnerDot = partnerPeer
+    ? { id: partnerPeer.id, lat: partnerPeer.lat, lng: partnerPeer.lng }
+    : null;
   const freeCount = visiblePeers.filter((p) => !p.busy).length;
   const incomingVibe =
     conn.kind === "incoming"
@@ -514,6 +524,7 @@ export default function Home() {
         hiddenIds={blocked}
         theme={theme}
         recenterKey={recenterKey}
+        partner={partnerDot}
       />
 
       {phase === "gate" && (

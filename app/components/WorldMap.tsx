@@ -62,6 +62,26 @@ function delayFor(id: string): string {
   return `${(Math.abs(h) % 2800) / 1000}s`;
 }
 
+function myLineFor(
+  me: { lat: number; lng: number } | null,
+  partner: { lat: number; lng: number } | null,
+): GeoJSON.FeatureCollection {
+  if (!me || !partner) return { type: "FeatureCollection", features: [] };
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: greatCircle(me.lng, me.lat, partner.lng, partner.lat),
+        },
+      },
+    ],
+  };
+}
+
 function linesFor(links: Link[]): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
@@ -85,6 +105,7 @@ export default function WorldMap({
   hiddenIds,
   theme,
   recenterKey,
+  partner,
 }: {
   peers: PeerDot[];
   me: { lat: number; lng: number } | null;
@@ -97,6 +118,8 @@ export default function WorldMap({
   hiddenIds: ReadonlySet<string>;
   theme: ThemeName;
   recenterKey: number;
+  // The person you're connected to (offset position), if any.
+  partner: { id: string; lat: number; lng: number } | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -107,6 +130,7 @@ export default function WorldMap({
   const appliedThemeRef = useRef<ThemeName>(theme);
   const linksRef = useRef<Link[]>(links);
   const meRef = useRef(me);
+  const partnerRef = useRef(partner);
 
   const onPeerClickRef = useRef(onPeerClick);
   const canConnectRef = useRef(canConnect);
@@ -118,6 +142,7 @@ export default function WorldMap({
     themeRef.current = theme;
     linksRef.current = links;
     meRef.current = me;
+    partnerRef.current = partner;
   });
 
   // Initialise the globe once.
@@ -179,6 +204,35 @@ export default function WorldMap({
               "line-color": look.core,
               "line-width": 1.6,
               "line-opacity": 0.95,
+            },
+          });
+        }
+        // Your own connection: a bold brand-pink line between you and them.
+        if (!map.getSource("mylink")) {
+          map.addSource("mylink", {
+            type: "geojson",
+            data: myLineFor(meRef.current, partnerRef.current),
+          });
+        }
+        if (!map.getLayer("mylink-glow")) {
+          map.addLayer({
+            id: "mylink-glow",
+            type: "line",
+            source: "mylink",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#ff4f81", "line-width": 14, "line-blur": 10, "line-opacity": 0.55 },
+          });
+        }
+        if (!map.getLayer("mylink-core")) {
+          map.addLayer({
+            id: "mylink-core",
+            type: "line",
+            source: "mylink",
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: {
+              "line-color": "#ff8a5c",
+              "line-width": 3.5,
+              "line-dasharray": [1.5, 1.2],
             },
           });
         }
@@ -334,6 +388,7 @@ export default function WorldMap({
             (vibeFilter !== null && peer.vibe !== vibeFilter),
         );
         el.dataset.ringing = String(peer.id === ringingId);
+        el.dataset.partner = String(peer.id === partner?.id);
         el.setAttribute(
           "aria-label",
           peer.busy
@@ -354,7 +409,33 @@ export default function WorldMap({
     return () => {
       cancelled = true;
     };
-  }, [peers, ready, ringingId, vibeFilter, hiddenIds]);
+  }, [peers, ready, ringingId, vibeFilter, hiddenIds, partner?.id]);
+
+  // Draw your own connection and frame both of you on screen.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("mylink") as GeoJSONSource | undefined;
+    src?.setData(myLineFor(me, partner));
+    if (!me || !partner) return;
+    const mobile = window.innerWidth < 640;
+    map.fitBounds(
+      [
+        [Math.min(me.lng, partner.lng), Math.min(me.lat, partner.lat)],
+        [Math.max(me.lng, partner.lng), Math.max(me.lat, partner.lat)],
+      ],
+      {
+        // keep the pair clear of the chat panel (right on desktop, bottom on mobile)
+        padding: mobile
+          ? { top: 110, bottom: Math.round(window.innerHeight * 0.72) + 24, left: 50, right: 50 }
+          : { top: 120, bottom: 80, left: 80, right: 460 },
+        maxZoom: 12.5,
+        duration: prefersReducedMotion() ? 0 : 1800,
+      },
+    );
+    // Only re-frame when the partner changes, not on every poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partner?.id, ready]);
 
   // Push conversation arcs to the map.
   useEffect(() => {

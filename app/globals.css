@@ -107,6 +107,19 @@ body {
 .pulse-dot[data-ringing="true"]::after {
   animation-duration: 1s;
 }
+/* The person you're talking to: full brightness, bigger, brand-pink halo. */
+.pulse-dot[data-partner="true"] {
+  --c: #ff4f81;
+  opacity: 1;
+  filter: none;
+  z-index: 4;
+  width: 18px;
+  height: 18px;
+  cursor: default;
+}
+.pulse-dot[data-partner="true"]::after {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
 .pulse-dot[data-hidden="true"] {
   opacity: 0.08;
   pointer-events: none;

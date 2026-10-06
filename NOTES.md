@@ -67,6 +67,8 @@ Ranked by impact. All Critical and High items are fixed.
 7. **Headers:** *Added* nosniff, `X-Frame-Options: DENY` (prevents clickjacking the Accept button), `no-referrer`, HSTS, and a Permissions-Policy limiting camera, mic and geolocation to this origin.
 8. **Leaving and stale reaping now notify partners server-side**, so a closed or crashed tab always ends the chat for both people.
 
+**Video robustness:** if the camera is busy (e.g. a second browser window on the same machine) or missing, the call falls back to mic-only, and to receive-only if there's no mic either, with a specific message for blocked, busy, missing, or non-HTTPS cases.
+
 **Known, not fixed (with reasons)**
 - **IP-level rate limiting** needs a shared store across serverless instances (e.g. Upstash). The requirements say no external services, so limits are per session. Someone can still create many sessions.
 - **Peer IP addresses are visible to each other through WebRTC ICE.** That's inherent to peer-to-peer; a TURN relay with relay-only candidates would hide them.
@@ -82,6 +84,7 @@ Ranked by impact. All Critical and High items are fixed.
 
 **Alive**
 - **Vibes:** one tap on entry (☕ chilling, 🎧 music, 🌙 deep talk, 😂 make me laugh, 🗣️ practice a language). Your light glows in that colour, the request card says what the stranger is up for, and you can filter the globe by vibe with live counts. It's a profile-free way to set expectations, consistent with "no accounts".
+- **Your connection on the map:** while you chat, a bold pink line joins your pin and the stranger's light, their light gets a pink halo, and the map frames both of you (kept clear of the chat panel).
 - **Live conversation arcs:** glowing great-circle arcs connect people who are talking right now, so you can watch the world chatting. The server sends only the two offset endpoints, never ids.
 - **Spark:** one tap drops a shared icebreaker into both chats. The receiver only renders prompts from the known list, so it can't be abused to fake system messages.
 
