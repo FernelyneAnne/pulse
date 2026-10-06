@@ -10,6 +10,8 @@
   --aurora: #62e3c8;
   --danger: #ff6b6b;
   --ink: #14183a; /* text on bright fills, identical in both themes */
+  /* Warm "pulse" gradient for primary actions, same in both themes. */
+  --brand: linear-gradient(135deg, #ff4f81 0%, #ff6a4d 52%, #ffa63d 100%);
   color-scheme: dark;
 }
 
@@ -195,6 +197,19 @@ body {
     stroke-dashoffset: var(--len);
   }
 }
+@utility bg-brand {
+  background-image: var(--brand);
+}
+@utility text-brand {
+  background-image: var(--brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility shadow-brand {
+  box-shadow: 0 14px 34px -12px rgba(255, 79, 129, 0.75);
+}
+
 @utility animate-rise {
   animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }

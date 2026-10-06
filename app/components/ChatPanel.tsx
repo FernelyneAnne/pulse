@@ -54,7 +54,7 @@ export default function ChatPanel({
   return (
     <section
       aria-label="Chat with stranger"
-      className="glass absolute inset-x-0 bottom-0 z-30 flex h-[72dvh] animate-rise flex-col rounded-t-3xl shadow-2xl sm:inset-x-auto sm:inset-y-4 sm:right-4 sm:h-auto sm:w-[400px] sm:animate-slide-in sm:rounded-3xl"
+      className="glass absolute inset-x-0 bottom-0 z-30 flex h-[72dvh] animate-rise flex-col rounded-t-3xl shadow-2xl sm:inset-x-auto sm:top-20 sm:bottom-4 sm:right-4 sm:h-auto sm:w-[400px] sm:animate-slide-in sm:rounded-3xl"
     >
       <header className="flex items-center gap-3 border-b border-moon/10 px-5 py-4">
         <span
@@ -119,7 +119,7 @@ export default function ChatPanel({
               <p
                 className={`max-w-[80%] whitespace-pre-wrap break-words px-4 py-2 text-[15px] leading-snug ${
                   m.mine
-                    ? "rounded-2xl rounded-br-md bg-amber text-ink"
+                    ? "bg-brand rounded-2xl rounded-br-md text-white"
                     : "rounded-2xl rounded-bl-md bg-moon/10 text-moon"
                 }`}
               >
@@ -145,13 +145,13 @@ export default function ChatPanel({
           placeholder={connected ? "Write a message" : "Connecting…"}
           aria-label="Message"
           disabled={!connected}
-          className="min-w-0 flex-1 rounded-2xl bg-moon/8 px-4 py-3 text-[15px] outline-none placeholder:text-moon/40 focus:ring-2 focus:ring-amber/60 disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-full bg-moon/8 px-5 py-3 text-[15px] outline-none placeholder:text-moon/40 focus:ring-2 focus:ring-amber/60 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!connected || !draft.trim()}
           aria-label="Send message"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber text-ink transition hover:brightness-110 active:scale-95 disabled:opacity-35"
+          className="grid h-12 w-12 shrink-0 place-items-center bg-brand shadow-brand rounded-full text-white transition hover:brightness-110 active:scale-95 disabled:opacity-35"
         >
           <SendIcon />
         </button>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { NearbyPeer } from "./NearbyPanel";
 import { vibeById } from "@/lib/vibes";
-import { SendIcon } from "./icons";
+import { CloseIcon, HeartWaveIcon, UndoIcon } from "./icons";
 
 const SWIPE_PX = 110;
 
@@ -20,13 +20,11 @@ export default function SwipeDeck({
   people,
   canConnect,
   onConnect,
-  onClose,
 }: {
   hidden?: boolean;
   people: NearbyPeer[];
   canConnect: boolean;
   onConnect: (id: string) => void;
-  onClose: () => void;
 }) {
   const [skipped, setSkipped] = useState<string[]>([]);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
@@ -57,13 +55,11 @@ export default function SwipeDeck({
 
   const decideRef = useRef(decide);
   const undoRef = useRef(undo);
-  const onCloseRef = useRef(onClose);
   const hiddenRef = useRef(hidden);
   useEffect(() => {
     hiddenRef.current = hidden;
     decideRef.current = decide;
     undoRef.current = undo;
-    onCloseRef.current = onClose;
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,7 +67,6 @@ export default function SwipeDeck({
       if (e.key === "ArrowRight") decideRef.current("right");
       else if (e.key === "ArrowLeft") decideRef.current("left");
       else if (e.key === "Backspace") undoRef.current();
-      else if (e.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -107,11 +102,11 @@ export default function SwipeDeck({
     <section
       aria-label="Swipe through strangers"
       aria-hidden={hidden}
-      className={`absolute inset-0 z-30 ${hidden ? "hidden" : "flex"} flex-col items-center justify-center bg-night/55 p-4 pt-20 backdrop-blur-sm`}
+      className={`absolute inset-0 z-30 ${hidden ? "hidden" : "flex"} flex-col items-center bg-night/60 px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-[calc(5.5rem+env(safe-area-inset-top))] backdrop-blur-md`}
     >
-      <div className="relative w-full max-w-sm flex-1 sm:max-h-[560px] sm:flex-none sm:basis-[560px]">
+      <div className="relative w-full max-w-sm flex-1 sm:max-h-[580px]">
         {!top && (
-          <div className="glass grid h-full place-items-center rounded-[2rem] p-8 text-center">
+          <div className="glass grid h-full place-items-center rounded-[1.75rem] p-8 text-center">
             <div>
               <p className="text-5xl" aria-hidden>🌙</p>
               <p className="mt-4 text-xl font-bold">You&rsquo;ve seen everyone free right now</p>
@@ -122,7 +117,7 @@ export default function SwipeDeck({
               {skipped.length > 0 && (
                 <button
                   onClick={() => setSkipped([])}
-                  className="mt-6 rounded-full bg-amber px-5 py-2.5 font-bold text-ink"
+                  className="bg-brand shadow-brand mt-6 rounded-full px-6 py-3 font-extrabold text-white"
                 >
                   Show skipped again
                 </button>
@@ -176,36 +171,33 @@ export default function SwipeDeck({
         )}
       </div>
 
-      <div className="mt-5 flex items-center gap-5 pb-[env(safe-area-inset-bottom)]">
+      <div className="mt-5 flex items-center gap-4">
         <RoundButton
           label="Bring back last skipped"
           size="sm"
           onClick={undo}
           disabled={skipped.length === 0}
-          className="text-amber"
+          tone="#ffb238"
         >
-          ↺
+          <UndoIcon className="h-5 w-5" />
         </RoundButton>
         <RoundButton
           label="Skip"
           size="lg"
           onClick={() => decide("left")}
           disabled={!top}
-          className="text-danger"
+          tone="#ff5a6e"
         >
-          ✕
+          <CloseIcon className="h-8 w-8" />
         </RoundButton>
         <RoundButton
           label="Say hello"
           size="lg"
           onClick={() => decide("right")}
           disabled={!top || !canConnect}
-          className="text-aurora"
+          primary
         >
-          <SendIcon className="h-7 w-7" />
-        </RoundButton>
-        <RoundButton label="Close swipe view" size="sm" onClick={onClose} className="text-moon/70">
-          ⌄
+          <HeartWaveIcon className="h-8 w-8" />
         </RoundButton>
       </div>
       <p className="mt-3 hidden text-xs text-moon/50 sm:block">
@@ -232,27 +224,43 @@ function Card({
     <div
       {...handlers}
       style={style}
-      className={`absolute inset-0 select-none overflow-hidden rounded-[2rem] shadow-2xl ${
-        muted ? "opacity-70" : ""
+      className={`absolute inset-0 select-none overflow-hidden rounded-[1.75rem] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)] ring-1 ring-white/10 ${
+        muted ? "brightness-75" : ""
       }`}
     >
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(120% 80% at 30% 15%, ${v.color} 0%, color-mix(in oklab, ${v.color} 45%, #14183a) 45%, #14183a 100%)`,
+          background: `radial-gradient(110% 75% at 50% 18%, ${v.color} 0%, color-mix(in oklab, ${v.color} 40%, #1a1440) 48%, #0c0f26 100%)`,
         }}
       />
-      <div className="absolute inset-0 grid place-items-center pb-24">
-        <span className="text-[7.5rem] drop-shadow-[0_10px_30px_rgba(0,0,0,0.35)]" aria-hidden>
+      {/* soft light blobs for depth */}
+      <div
+        className="absolute -left-16 top-10 h-56 w-56 rounded-full opacity-40 blur-3xl"
+        style={{ background: v.color }}
+        aria-hidden
+      />
+      <div className="absolute inset-0 grid place-items-center pb-28">
+        <span
+          className="grid h-44 w-44 place-items-center rounded-full bg-white/12 text-[6.5rem] ring-1 ring-white/25 backdrop-blur-sm"
+          aria-hidden
+        >
           {v.emoji}
         </span>
       </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0c0f26] via-[#0c0f26]/80 to-transparent p-6 pt-20 text-white">
-        <p className="text-3xl font-extrabold leading-none tracking-tight">A stranger</p>
-        <p className="mt-2 text-lg font-semibold" style={{ color: v.color }}>
-          {v.label}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-6 pt-24 text-white">
+        <div className="flex items-center gap-2 text-xs font-bold">
+          <span className="flex items-center gap-1.5 rounded-full bg-[#2fd27a]/20 px-2.5 py-1 text-[#6dffae]">
+            <span className="h-2 w-2 rounded-full bg-[#2fd27a] shadow-[0_0_8px_2px_rgba(47,210,122,0.7)]" />
+            Online now
+          </span>
+          <span className="rounded-full bg-white/15 px-2.5 py-1">{distanceLabel(person.km)}</span>
+        </div>
+        <p className="mt-3 text-[2.1rem] font-extrabold leading-none tracking-tight">A stranger</p>
+        <p className="mt-2 flex items-center gap-2 text-lg font-semibold">
+          <span aria-hidden>{v.emoji}</span>
+          <span>Up for {v.label.toLowerCase()}</span>
         </p>
-        <p className="mt-1 text-sm text-white/70">{distanceLabel(person.km)}</p>
       </div>
       {children}
     </div>
@@ -264,14 +272,16 @@ function RoundButton({
   size,
   onClick,
   disabled,
-  className = "",
+  tone,
+  primary,
   children,
 }: {
   label: string;
   size: "sm" | "lg";
   onClick: () => void;
   disabled?: boolean;
-  className?: string;
+  tone?: string;
+  primary?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -280,9 +290,14 @@ function RoundButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`glass grid place-items-center rounded-full font-bold shadow-xl transition hover:scale-110 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 ${
-        size === "lg" ? "h-[72px] w-[72px] text-3xl" : "h-12 w-12 text-xl"
-      } ${className}`}
+      style={
+        primary
+          ? undefined
+          : { color: tone, boxShadow: `0 10px 30px -12px ${tone}, inset 0 0 0 2px ${tone}55` }
+      }
+      className={`grid place-items-center rounded-full transition hover:scale-110 active:scale-90 disabled:opacity-30 disabled:hover:scale-100 ${
+        primary ? "bg-brand shadow-brand text-white" : "glass"
+      } ${size === "lg" ? "h-[74px] w-[74px]" : "h-[52px] w-[52px]"}`}
     >
       {children}
     </button>

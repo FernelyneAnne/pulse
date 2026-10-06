@@ -88,3 +88,31 @@ export const NearbyIcon = ({ className = "h-5 w-5" }: P) => (
     <path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2" />
   </svg>
 );
+export const GlobeIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" />
+  </svg>
+);
+export const CardsIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className}>
+    <rect x="6.5" y="3" width="11" height="15" rx="2.5" transform="rotate(8 12 10.5)" />
+    <rect x="5" y="5" width="11" height="15" rx="2.5" transform="rotate(-8 10.5 12.5)" />
+  </svg>
+);
+export const CloseIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className} strokeWidth={3}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </svg>
+);
+export const HeartWaveIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg viewBox="0 0 24 24" aria-hidden className={className} fill="currentColor">
+    <path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3.1 1.8-2 3.3-3.1 5.4-3.1 3.6 0 5.7 3.8 4.2 7.2C19.5 16.4 12 21 12 21z" />
+  </svg>
+);
+export const UndoIcon = ({ className = "h-5 w-5" }: P) => (
+  <svg {...base} className={className} strokeWidth={2.5}>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+  </svg>
+);

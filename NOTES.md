@@ -41,6 +41,7 @@ Concept: **people are city lights on a night-side Earth.** Every visual choice c
 - **Quality floor:** responsive to mobile with safe-area insets, visible focus rings, `prefers-reduced-motion` respected (no spin, no pulsing), aria labels and live regions.
 - Your own pin now shows the **offset** spot others see, not your real location.
 - **Dark and light mode:** follows the OS by default, a toggle remembers the choice. Light mode is a "dawn sky" variant: same roles, inverted surfaces, light basemap and atmosphere, darker amber so text stays readable. A tiny inline script sets the theme before first paint, so there is no flash.
+- **Premium, dating-app feel:** a warm pink-to-amber brand gradient on every primary action and the wordmark, a centered header, and an app-style bottom tab bar (Explore / Swipe / Nearby) so the three ways of finding someone are one tap apart. Swipe cards get "online now" and distance chips, a glass emoji badge, and large round skip / hello / undo buttons.
 - **Back** (top left) leaves the current session and returns to the start screen to pick a different vibe; it asks first if you are mid-conversation and ends it properly for the other person.
 - **Reset view** flies the map back to your own light.
 

@@ -48,7 +48,7 @@ export default function NearbyPanel({
   return (
     <section
       aria-label="People nearby"
-      className="glass absolute inset-x-0 bottom-0 z-30 flex max-h-[70dvh] animate-rise flex-col rounded-t-3xl shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-4 sm:top-20 sm:max-h-[calc(100dvh-7rem)] sm:w-[360px] sm:animate-slide-in sm:rounded-3xl"
+      className="glass absolute inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] top-24 z-30 flex animate-rise flex-col rounded-[1.75rem] shadow-2xl sm:inset-x-auto sm:left-1/2 sm:w-[400px] sm:-translate-x-1/2"
     >
       <header className="flex items-start gap-3 border-b border-moon/10 px-5 py-4">
         <NearbyIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber" />
@@ -103,7 +103,7 @@ export default function NearbyPanel({
               <button
                 onClick={() => onConnect(p.id)}
                 disabled={p.busy || !canConnect}
-                className="shrink-0 rounded-full bg-amber px-4 py-2 text-sm font-bold text-ink transition hover:brightness-110 active:scale-95 disabled:opacity-35"
+                className="shrink-0 bg-brand rounded-full px-4 py-2 text-sm font-extrabold text-white transition hover:brightness-110 active:scale-95 disabled:opacity-35"
               >
                 Connect
               </button>

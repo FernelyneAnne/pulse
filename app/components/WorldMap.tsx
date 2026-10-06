@@ -290,7 +290,9 @@ export default function WorldMap({
     appliedThemeRef.current = theme;
     // diff:false forces a full reload; a diffed swap silently deletes our
     // custom arc layers and never fires style.load.
-    map.setStyle(LOOK[theme].style, { diff: false });
+    map.setStyle(LOOK[theme].style, { diff: false } as unknown as Parameters<
+      MapboxMap["setStyle"]
+    >[1]);
   }, [theme, ready]);
 
   // Reconcile peer lights.

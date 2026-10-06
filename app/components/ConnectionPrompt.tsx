@@ -86,14 +86,14 @@ export default function ConnectionPrompt({
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             onClick={onDecline}
-            className="rounded-2xl border border-moon/15 px-4 py-3 font-semibold text-moon/80 transition hover:bg-moon/5"
+            className="rounded-full border border-moon/15 px-4 py-3 font-semibold text-moon/80 transition hover:bg-moon/5"
           >
             {declineLabel}
           </button>
           <button
             ref={acceptRef}
             onClick={onAccept}
-            className="rounded-2xl bg-amber px-4 py-3 font-bold text-ink transition hover:brightness-110 active:scale-[0.98]"
+            className="bg-brand shadow-brand rounded-full px-4 py-3 font-extrabold text-white transition hover:brightness-110 active:scale-[0.98]"
           >
             {acceptLabel}
           </button>

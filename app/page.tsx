@@ -14,7 +14,6 @@ import { DEFAULT_VIBE, SPARKS, VIBES, pickSpark, vibeById } from "@/lib/vibes";
 import {
   BackIcon,
   EyeIcon,
-  NearbyIcon,
   ShieldIcon,
   SparkIcon,
   TargetIcon,
@@ -22,6 +21,7 @@ import {
 import ThemeToggle from "./components/ThemeToggle";
 import NearbyPanel, { NEARBY_KM, type NearbyPeer } from "./components/NearbyPanel";
 import SwipeDeck from "./components/SwipeDeck";
+import TabBar, { type View } from "./components/TabBar";
 import { useTheme } from "@/lib/theme";
 import { distanceKm } from "@/lib/geo";
 
@@ -47,8 +47,7 @@ export default function Home() {
   const [revealed, setRevealed] = useState(false);
   const [myVibeState, setMyVibeState] = useState(DEFAULT_VIBE);
   const [recenterKey, setRecenterKey] = useState(0);
-  const [nearbyOpen, setNearbyOpen] = useState(false);
-  const [swipeOpen, setSwipeOpen] = useState(false);
+  const [view, setView] = useState<View>("globe");
   const theme = useTheme();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -228,14 +227,14 @@ export default function Home() {
     setLinks([]);
     setMyLocation(null);
     setVibeFilter(null);
-    setNearbyOpen(false);
-    setSwipeOpen(false);
+    setView("globe");
     setPhase("gate");
   }
 
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
-    setNearbyOpen(false);
+    // From Nearby, go to the globe to watch the knock; the swipe deck stays.
+    setView((v) => (v === "nearby" ? "globe" : v));
     setPeerVibe(vibeOf(peerId));
     setConn({ kind: "requesting", peerId });
     void sendSignal(peerId, "request").then((ok) => {
@@ -512,149 +511,117 @@ export default function Home() {
       )}
 
       {phase === "live" && (
-        <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-          <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              onClick={goBack}
-              aria-label="Back to start (change vibe)"
-              title="Back to start"
-              className="glass grid h-10 w-10 place-items-center rounded-full transition hover:brightness-110"
-            >
-              <BackIcon />
-            </button>
-            <p className="text-2xl font-extrabold tracking-[-0.04em]">
-              pulse
-              <span className="ml-1.5 inline-block h-2 w-2 animate-breathe rounded-full bg-amber align-middle" />
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-40 grid grid-cols-[auto_1fr_auto] items-center gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <button
+            onClick={goBack}
+            aria-label="Back to start (change vibe)"
+            title="Back to start"
+            className="glass pointer-events-auto grid h-11 w-11 place-items-center rounded-full transition hover:scale-105"
+          >
+            <BackIcon />
+          </button>
+          <div className="text-center leading-none">
+            <p className="text-brand text-[1.9rem] font-extrabold tracking-[-0.05em]">pulse</p>
+            <p className="mt-1 text-[11px] font-semibold text-moon/60" aria-live="polite">
+              {visiblePeers.length} online, {freeCount} free
+              {links.length > 0 ? `, ${links.length} talking` : ""}
             </p>
           </div>
-          <div className="pointer-events-auto flex items-center gap-2">
-          <p className="glass hidden rounded-full px-4 py-2 text-sm sm:block" aria-live="polite">
-            <span className="font-bold text-amber">{visiblePeers.length}</span>{" "}
-            {visiblePeers.length === 1 ? "light" : "lights"} on
-            {links.length > 0 && (
-              <span className="text-moon/55">
-                , {links.length} {links.length === 1 ? "conversation" : "conversations"}
-              </span>
-            )}
-            {visiblePeers.length > 0 && (
-              <span className="text-moon/55">, {freeCount} free to talk</span>
-            )}
-          </p>
-          <ThemeToggle />
-          </div>
+          <ThemeToggle className="pointer-events-auto h-11 w-11" />
         </header>
       )}
 
-      {phase === "live" && conn.kind === "idle" && visiblePeers.length === 0 && (
-        <p className="glass pointer-events-none absolute bottom-6 left-1/2 z-10 w-[min(92vw,26rem)] -translate-x-1/2 animate-rise rounded-2xl px-5 py-3 text-center text-sm text-moon/75">
-          You&rsquo;re the only light right now. Share the link, or keep this
-          tab open and someone will show up.
-        </p>
-      )}
-
-      {phase === "live" && conn.kind === "idle" && visiblePeers.length > 0 && (
-        <nav
-          aria-label="Filter lights by vibe"
-          className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-        >
-          <p className="pointer-events-none text-sm text-moon/60">
-            {vibeFilter
-              ? `Showing people up for ${vibeById(vibeFilter).label.toLowerCase()}`
-              : "Tap a glowing light to say hello"}
-          </p>
-          <div className="glass flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5">
-            <button
-              onClick={() => setVibeFilter(null)}
-              aria-pressed={vibeFilter === null}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                vibeFilter === null ? "bg-moon text-night" : "text-moon/75 hover:bg-moon/10"
-              }`}
-            >
-              Everyone
-            </button>
-            {VIBES.map((v) => {
-              const on = vibeFilter === v.id;
-              const n = vibeCounts.get(v.id) ?? 0;
-              return (
+      {phase === "live" && view === "globe" && conn.kind === "idle" && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10 flex flex-col items-center gap-3 px-4">
+          {visiblePeers.length === 0 ? (
+            <p className="glass w-[min(92vw,26rem)] animate-rise rounded-2xl px-5 py-3 text-center text-sm text-moon/75">
+              You&rsquo;re the only light right now. Share the link, or keep this
+              tab open and someone will show up.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-moon/70">
+                {vibeFilter
+                  ? `Showing people up for ${vibeById(vibeFilter).label.toLowerCase()}`
+                  : "Tap a glowing light to say hello"}
+              </p>
+              <nav
+                aria-label="Filter lights by vibe"
+                className="glass pointer-events-auto flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5"
+              >
                 <button
-                  key={v.id}
-                  onClick={() => setVibeFilter(on ? null : v.id)}
-                  aria-pressed={on}
-                  title={v.label}
-                  aria-label={`${v.label}, ${n} free`}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm transition ${
-                    on ? "text-ink" : "text-moon/75 hover:bg-moon/10"
+                  onClick={() => setVibeFilter(null)}
+                  aria-pressed={vibeFilter === null}
+                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
+                    vibeFilter === null ? "bg-brand text-white" : "text-moon/75 hover:bg-moon/10"
                   }`}
-                  style={on ? { background: v.color } : undefined}
                 >
-                  <span aria-hidden>{v.emoji}</span>
-                  <span className="tabular-nums">{n}</span>
+                  Everyone
                 </button>
-              );
-            })}
-          </div>
-        </nav>
+                {VIBES.map((v) => {
+                  const on = vibeFilter === v.id;
+                  const n = vibeCounts.get(v.id) ?? 0;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => setVibeFilter(on ? null : v.id)}
+                      aria-pressed={on}
+                      title={v.label}
+                      aria-label={`${v.label}, ${n} free`}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition ${
+                        on ? "text-ink" : "text-moon/75 hover:bg-moon/10"
+                      }`}
+                      style={on ? { background: v.color } : undefined}
+                    >
+                      <span aria-hidden>{v.emoji}</span>
+                      <span className="tabular-nums">{n}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </>
+          )}
+        </div>
       )}
 
-      {phase === "live" && !swipeOpen && (conn.kind === "idle" || conn.kind === "requesting") && (
-        <div className="absolute right-4 top-20 z-20 flex flex-col items-end gap-2">
-          <p className="glass rounded-full px-3 py-1.5 text-xs sm:hidden" aria-live="polite">
-            <span className="font-bold text-amber">{visiblePeers.length}</span> on,{" "}
-            {freeCount} free
-          </p>
-          <button
-            onClick={() => {
-              setNearbyOpen(false);
-              setSwipeOpen(true);
-            }}
-            className="flex items-center gap-2 rounded-full bg-amber px-5 py-3 text-sm font-extrabold text-ink shadow-[0_10px_30px_-8px_rgba(255,178,56,0.8)] transition hover:scale-105 active:scale-95"
-          >
-            <span aria-hidden>💫</span> Start swiping
-          </button>
-          <button
-            onClick={() => setNearbyOpen((o) => !o)}
-            aria-pressed={nearbyOpen}
-            aria-label={`People nearby, ${nearby.length} within ${NEARBY_KM} km`}
-            className={`glass flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:brightness-110 ${
-              nearbyOpen ? "ring-2 ring-amber" : ""
-            }`}
-          >
-            <NearbyIcon className="h-4 w-4 text-amber" />
-            Nearby
-            <span className="grid min-w-6 place-items-center rounded-full bg-amber px-1.5 text-xs font-bold text-ink tabular-nums">
-              {nearby.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setRecenterKey((k) => k + 1)}
-            aria-label="Reset view: re-center the map on me"
-            title="Re-center on me"
-            className="glass flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition hover:brightness-110"
-          >
-            <TargetIcon className="h-4 w-4" />
-            Reset view
-          </button>
-        </div>
+      {phase === "live" && view === "globe" && conn.kind === "idle" && (
+        <button
+          onClick={() => setRecenterKey((k) => k + 1)}
+          aria-label="Reset view: re-center the map on me"
+          title="Reset view"
+          className="glass absolute right-4 top-24 z-20 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition hover:scale-105"
+        >
+          <TargetIcon className="h-4 w-4" />
+          Reset view
+        </button>
       )}
 
       {/* Stays mounted while you knock/chat so skipped cards are remembered;
           after a decline or a finished chat you land back in the deck. */}
-      {phase === "live" && swipeOpen && (
+      {phase === "live" && view === "swipe" && (
         <SwipeDeck
           hidden={conn.kind !== "idle"}
           people={deckPeople}
           canConnect={conn.kind === "idle"}
           onConnect={requestConnection}
-          onClose={() => setSwipeOpen(false)}
         />
       )}
 
-      {phase === "live" && nearbyOpen && conn.kind === "idle" && (
+      {phase === "live" && view === "nearby" && conn.kind === "idle" && (
         <NearbyPanel
           people={nearby}
           canConnect={conn.kind === "idle"}
           onConnect={requestConnection}
-          onClose={() => setNearbyOpen(false)}
+          onClose={() => setView("globe")}
+        />
+      )}
+
+      {phase === "live" && conn.kind === "idle" && (
+        <TabBar
+          view={view}
+          onChange={setView}
+          nearbyCount={nearby.length}
+          swipeCount={deckPeople.filter((p) => !p.busy).length}
         />
       )}
 

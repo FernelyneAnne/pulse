@@ -44,8 +44,8 @@ export default function EntryGate({
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-end overflow-y-auto justify-center bg-gradient-to-t from-night via-night/40 to-transparent p-5 pb-[max(2rem,env(safe-area-inset-bottom))] sm:items-center sm:bg-none">
       <div className="pointer-events-auto w-full max-w-md animate-rise">
-        <h1 className="text-[clamp(3.5rem,12vw,6.5rem)] font-extrabold leading-[0.85] tracking-[-0.05em] text-moon">
-          pulse
+        <h1 className="text-[clamp(3.5rem,12vw,6.5rem)] font-extrabold leading-[0.95] tracking-[-0.05em]">
+          <span className="text-brand">pulse</span>
           <span className="ml-2 inline-block h-3.5 w-3.5 animate-breathe rounded-full bg-amber align-middle shadow-[0_0_24px_6px_rgba(255,178,56,0.6)]" />
         </h1>
         <p className="mt-5 max-w-sm text-lg leading-snug text-moon/80">
@@ -84,7 +84,7 @@ export default function EntryGate({
         <button
           onClick={enter}
           disabled={status === "locating"}
-          className="mt-7 w-full rounded-2xl bg-amber px-6 py-4 text-lg font-bold text-ink shadow-[0_10px_40px_-10px_rgba(255,178,56,0.8)] transition hover:brightness-110 active:scale-[0.98] disabled:opacity-70 sm:w-auto"
+          className="bg-brand shadow-brand mt-7 w-full rounded-full px-8 py-4 text-lg font-extrabold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-70 sm:w-auto"
         >
           {status === "locating" ? "Finding you…" : "Turn on my light"}
         </button>
