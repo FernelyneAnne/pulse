@@ -5,7 +5,7 @@ Git history is split into small commits that follow the same order.
 
 ## Setup decisions
 
-- **Database:** Supabase Postgres instead of Neon (both are plain Postgres; Prisma connects the same way). Locally `DATABASE_URL` is the session pooler (port 5432), which works for `prisma db push` and the app. On Vercel it is the transaction pooler (port 6543), which suits short-lived serverless connections. Prisma 7 talks to Postgres through the `pg` driver adapter, which uses unnamed prepared statements, so no `pgbouncer` flag is needed. The code already avoids interactive transactions, so it is safe behind PgBouncer.
+- **Database:** Vercel Postgres (Neon, provisioned from the Vercel Marketplace). It injects `DATABASE_URL` (pooled) into the project, which the app uses at runtime; the schema was pushed with the unpooled URL. Prisma 7 talks to Postgres through the `pg` driver adapter and the code avoids interactive transactions, so it is safe behind a pooler. No other external services.
 - **Schema changes** ship as migrations in `prisma/migrations` and also work with `npx prisma db push` as the README describes.
 
 ---
@@ -40,6 +40,9 @@ Concept: **people are city lights on a night-side Earth.** Every visual choice c
 - **Copy:** every outcome says what happened in plain words ("They're not free right now", "No answer this time", "The stranger left").
 - **Quality floor:** responsive to mobile with safe-area insets, visible focus rings, `prefers-reduced-motion` respected (no spin, no pulsing), aria labels and live regions.
 - Your own pin now shows the **offset** spot others see, not your real location.
+- **Dark and light mode:** follows the OS by default, a toggle remembers the choice. Light mode is a "dawn sky" variant: same roles, inverted surfaces, light basemap and atmosphere, darker amber so text stays readable. A tiny inline script sets the theme before first paint, so there is no flash.
+- **Back** (top left) leaves the current session and returns to the start screen to pick a different vibe; it asks first if you are mid-conversation and ends it properly for the other person.
+- **Reset view** flies the map back to your own light.
 
 ---
 
@@ -80,6 +83,8 @@ Ranked by impact. All Critical and High items are fixed.
 - **Vibes:** one tap on entry (☕ chilling, 🎧 music, 🌙 deep talk, 😂 make me laugh, 🗣️ practice a language). Your light glows in that colour, the request card says what the stranger is up for, and you can filter the globe by vibe with live counts. It's a profile-free way to set expectations, consistent with "no accounts".
 - **Live conversation arcs:** glowing great-circle arcs connect people who are talking right now, so you can watch the world chatting. The server sends only the two offset endpoints, never ids.
 - **Spark:** one tap drops a shared icebreaker into both chats. The receiver only renders prompts from the known list, so it can't be abused to fake system messages.
+
+- **Nearby:** a panel listing everyone online within about 3 km, anonymously (vibe, rough distance, free or talking) with a Connect button. Distances are computed in the browser from the same offset positions already shown on the map, so no new data leaves the server. Because every light is moved 1–3 km, two people in the same building can appear up to ~6 km apart; distances are rounded and labelled "about", and the panel says why.
 
 **Safe**
 - **Safe Reveal:** the stranger's video starts heavily blurred. Audio flows, so you can talk first and show the picture when you're comfortable.
