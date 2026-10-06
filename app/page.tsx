@@ -6,7 +6,7 @@ import WorldMap from "./components/WorldMap";
 import ConnectionPrompt from "./components/ConnectionPrompt";
 import ChatPanel, { type ChatMessage } from "./components/ChatPanel";
 import VideoPanel from "./components/VideoPanel";
-import { join, leave, poll, sendSignal } from "@/lib/api";
+import { endOnUnload, join, leave, poll, sendSignal } from "@/lib/api";
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type PeerDot, type SignalMsg } from "@/lib/types";
@@ -82,8 +82,8 @@ export default function Home() {
       onControl: (ctrl) => handleControl(ctrl),
       onRemoteStream: (stream) => setRemoteStream(stream),
       onConnectionState: (state) => {
-        if (state === "failed") {
-          teardown("Connection failed (network).");
+        if (state === "failed" || state === "closed") {
+          if (peerRef.current === ps) teardown("Connection lost.");
         }
       },
       onChannelOpen: () => {
@@ -294,7 +294,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!sessionId || phase !== "live") return;
-    const onLeave = () => leave(sessionId);
+    const onLeave = () => {
+      const c = connRef.current;
+      if (c.kind !== "idle") endOnUnload(sessionId, c.peerId);
+      leave(sessionId);
+    };
     window.addEventListener("pagehide", onLeave);
     window.addEventListener("beforeunload", onLeave);
     return () => {

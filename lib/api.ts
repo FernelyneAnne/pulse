@@ -34,6 +34,25 @@ export async function sendSignal(
   });
 }
 
+// Fire-and-forget POST that survives the tab closing.
+function beacon(url: string, body: string): void {
+  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+    navigator.sendBeacon(url, body);
+  } else {
+    void fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    });
+  }
+}
+
+// Tell the current partner we're gone (tab closing mid-connection).
+export function endOnUnload(fromId: string, toId: string): void {
+  beacon("/api/signal", JSON.stringify({ fromId, toId, type: "end" }));
+}
+
 // Fire-and-forget leave that survives the tab closing.
 export function leave(id: string): void {
   const body = JSON.stringify({ id });
