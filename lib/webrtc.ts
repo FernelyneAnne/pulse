@@ -15,6 +15,29 @@ interface PeerCallbacks {
   onChannelOpen: () => void;
 }
 
+export type MediaFailure = "denied" | "busy" | "missing" | "insecure";
+
+export class MediaAccessError extends Error {
+  constructor(public readonly reason: MediaFailure) {
+    super(reason);
+  }
+}
+
+// What to tell the user for each failure.
+export function mediaFailureText(err: unknown): string {
+  const reason = err instanceof MediaAccessError ? err.reason : "missing";
+  switch (reason) {
+    case "denied":
+      return "Camera and mic are blocked. Allow them in the address bar, then try again.";
+    case "busy":
+      return "Your camera is in use by another app or browser window.";
+    case "insecure":
+      return "Video needs HTTPS (or localhost). Open the secure link instead.";
+    default:
+      return "No camera or microphone was found.";
+  }
+}
+
 const ICE_CONFIG: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
@@ -150,14 +173,37 @@ export class PeerSession {
     }
   }
 
+  // Camera + mic. If the camera can't be opened (busy in another app or
+  // browser window, missing, or blocked) fall back to mic-only so the call
+  // still works; callers can tell from the stream which tracks they got.
   async startVideo(): Promise<MediaStream> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new MediaAccessError("insecure");
+    }
     if (!this.localStream) {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      for (const track of this.localStream.getTracks()) {
-        this.pc.addTrack(track, this.localStream);
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true,
+        });
+      } catch (err) {
+        const name = (err as DOMException)?.name;
+        if (name === "NotAllowedError" || name === "SecurityError") {
+          throw new MediaAccessError("denied");
+        }
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err2) {
+          const n2 = (err2 as DOMException)?.name;
+          throw new MediaAccessError(
+            n2 === "NotAllowedError" ? "denied" : name === "NotReadableError" ? "busy" : "missing",
+          );
+        }
+      }
+      this.localStream = stream;
+      for (const track of stream.getTracks()) {
+        this.pc.addTrack(track, stream);
       }
     }
     return this.localStream;

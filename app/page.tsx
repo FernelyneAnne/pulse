@@ -7,7 +7,12 @@ import ConnectionPrompt from "./components/ConnectionPrompt";
 import ChatPanel, { type ChatMessage } from "./components/ChatPanel";
 import VideoPanel from "./components/VideoPanel";
 import { AuthError, join, leave, poll, sendSignal } from "@/lib/api";
-import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
+import {
+  PeerSession,
+  mediaFailureText,
+  type DescType,
+  type PeerControl,
+} from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
 import { type Link, type PeerDot, type SignalMsg } from "@/lib/types";
 import { DEFAULT_VIBE, SPARKS, VIBES, pickSpark, vibeById } from "@/lib/vibes";
@@ -154,12 +159,16 @@ export default function Home() {
           ps.startVideo()
             .then((stream) => {
               setLocalStream(stream);
+              setCamOn(stream.getVideoTracks().length > 0);
+              if (stream.getVideoTracks().length === 0) {
+                showNotice("Camera unavailable, joined with your mic only.");
+              }
               setVideo("active");
             })
-            .catch(() => {
+            .catch((err) => {
               setVideo("none");
               ps.sendControl("video-end");
-              showNotice("Your camera isn't available. Check browser permissions.");
+              showNotice(mediaFailureText(err));
             });
         }
         break;
@@ -297,13 +306,17 @@ export default function Home() {
     ps.startVideo()
       .then((stream) => {
         setLocalStream(stream);
+        setCamOn(stream.getVideoTracks().length > 0);
+        if (stream.getVideoTracks().length === 0) {
+          showNotice("Camera unavailable, joined with your mic only.");
+        }
         ps.sendControl("video-accept");
         setVideo("active");
       })
-      .catch(() => {
+      .catch((err) => {
         ps.sendControl("video-decline");
         setVideo("none");
-        showNotice("Your camera isn't available. Check browser permissions.");
+        showNotice(mediaFailureText(err));
       });
   }
 
