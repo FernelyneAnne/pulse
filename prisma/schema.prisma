@@ -12,11 +12,15 @@ datasource db {
 }
 
 model Presence {
-  id       String   @id // client-generated session uuid
-  lat      Float // ALREADY privacy-offset coords (raw is never stored)
-  lng      Float
-  busy     Boolean  @default(false) // true while in an active connection
-  lastSeen DateTime
+  id            String    @id // server-generated PUBLIC session id (safe to share)
+  tokenHash     String // sha256 of the secret session token (only the client holds the token)
+  lat           Float // ALREADY privacy-offset coords (raw is never stored)
+  lng           Float
+  busy          Boolean   @default(false) // true while in an active connection
+  peerId        String? // who this user is connected to (server-enforced pairing)
+  pendingTo     String? // outstanding connection request this user sent
+  lastRequestAt DateTime? // request rate limiting
+  lastSeen      DateTime
 
   @@index([lastSeen])
 }
