@@ -113,7 +113,11 @@ export default function Home() {
       onRemoteStream: (stream) => setRemoteStream(stream),
       onConnectionState: (state) => {
         if (state === "failed" || state === "closed") {
-          if (peerRef.current === ps) teardown("The connection dropped.");
+          if (peerRef.current === ps) {
+            // Free both of us server-side, not just locally.
+            void sendSignal(peerId, "end");
+            teardown("The connection dropped. Your networks may not allow a direct link.");
+          }
         }
       },
       onChannelOpen: () => {

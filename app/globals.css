@@ -35,7 +35,7 @@ body {
 }
 
 /* Frosted panels that float over the globe. */
-.glass {
+@utility glass {
   background: color-mix(in oklab, var(--night) 78%, transparent);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
@@ -153,13 +153,13 @@ body {
     stroke-dashoffset: var(--len);
   }
 }
-.animate-rise {
+@utility animate-rise {
   animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-.animate-slide-in {
+@utility animate-slide-in {
   animation: slide-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-.animate-breathe {
+@utility animate-breathe {
   animation: breathe 2.4s ease-in-out infinite;
 }
 
