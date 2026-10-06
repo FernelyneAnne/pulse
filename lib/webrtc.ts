@@ -196,9 +196,10 @@ export class PeerSession {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (err2) {
           const n2 = (err2 as DOMException)?.name;
-          throw new MediaAccessError(
-            n2 === "NotAllowedError" ? "denied" : name === "NotReadableError" ? "busy" : "missing",
-          );
+          if (n2 === "NotAllowedError") throw new MediaAccessError("denied");
+          // No usable camera or mic: still join, receive-only, so you can
+          // see and hear the other person.
+          stream = new MediaStream();
         }
       }
       this.localStream = stream;
