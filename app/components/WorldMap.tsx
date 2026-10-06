@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { Map as MapboxMap, Marker } from "mapbox-gl";
-import type { PeerDot } from "@/lib/types";
+import type { GeoJSONSource, Map as MapboxMap, Marker } from "mapbox-gl";
+import type { Link, PeerDot } from "@/lib/types";
+import { vibeById } from "@/lib/vibes";
+import { greatCircle } from "@/lib/geodesic";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
@@ -28,6 +30,9 @@ export default function WorldMap({
   canConnect,
   spinning,
   ringingId,
+  links,
+  vibeFilter,
+  hiddenIds,
 }: {
   peers: PeerDot[];
   me: { lat: number; lng: number } | null;
@@ -35,6 +40,9 @@ export default function WorldMap({
   canConnect: boolean;
   spinning: boolean;
   ringingId: string | null;
+  links: Link[];
+  vibeFilter: string | null;
+  hiddenIds: ReadonlySet<string>;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -84,6 +92,34 @@ export default function WorldMap({
         });
       });
       map.on("load", () => {
+        // Live conversation arcs: soft glow + bright core.
+        map.addSource("links", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "links-glow",
+          type: "line",
+          source: "links",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": "#62e3c8",
+            "line-width": 8,
+            "line-blur": 6,
+            "line-opacity": 0.45,
+          },
+        });
+        map.addLayer({
+          id: "links-core",
+          type: "line",
+          source: "links",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": "#d9fff6",
+            "line-width": 1.4,
+            "line-opacity": 0.9,
+          },
+        });
         if (!cancelled) setReady(true);
       });
       mapRef.current = map;
@@ -98,6 +134,13 @@ export default function WorldMap({
             const c = map.getCenter();
             c.lng -= dt * 0.004;
             map.setCenter(c);
+          }
+          if (map.getLayer("links-glow")) {
+            map.setPaintProperty(
+              "links-glow",
+              "line-opacity",
+              0.3 + 0.25 * Math.sin(t / 700),
+            );
           }
           raf = requestAnimationFrame(spin);
         };
@@ -183,13 +226,21 @@ export default function WorldMap({
           markers.set(peer.id, marker);
         }
         const el = marker.getElement();
+        const vibe = vibeById(peer.vibe);
+        el.style.setProperty("--c", vibe.color);
         el.dataset.busy = String(peer.busy);
+        el.dataset.hidden = String(
+          hiddenIds.has(peer.id) ||
+            (vibeFilter !== null && peer.vibe !== vibeFilter),
+        );
         el.dataset.ringing = String(peer.id === ringingId);
         el.setAttribute(
           "aria-label",
-          peer.busy ? "Stranger, already talking" : "Connect with this stranger",
+          peer.busy
+            ? "Stranger, already talking"
+            : `Connect with a stranger up for ${vibe.label.toLowerCase()}`,
         );
-        el.title = peer.busy ? "Already talking" : "Say hello";
+        el.title = peer.busy ? "Already talking" : `${vibe.emoji} ${vibe.label}`;
       }
 
       for (const [id, marker] of markers) {
@@ -203,7 +254,22 @@ export default function WorldMap({
     return () => {
       cancelled = true;
     };
-  }, [peers, ready, ringingId]);
+  }, [peers, ready, ringingId, vibeFilter, hiddenIds]);
+
+  // Push conversation arcs to the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("links") as GeoJSONSource | undefined;
+    src?.setData({
+      type: "FeatureCollection",
+      features: links.map(([a, b, c, d]) => ({
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates: greatCircle(a, b, c, d) },
+      })),
+    });
+  }, [links, ready]);
 
   return (
     <div className="absolute inset-0">

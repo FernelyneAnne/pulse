@@ -8,6 +8,7 @@ export type PeerControl =
 interface PeerCallbacks {
   onSignal: (type: DescType, payload: string) => void;
   onChat: (text: string) => void;
+  onSpark: (text: string) => void;
   onControl: (ctrl: PeerControl) => void;
   onRemoteStream: (stream: MediaStream | null) => void;
   onConnectionState: (state: RTCPeerConnectionState) => void;
@@ -77,7 +78,9 @@ export class PeerSession {
       try {
         const msg = JSON.parse(e.data as string);
         if (msg.t === "chat" && typeof msg.text === "string") {
-          this.cb.onChat(msg.text);
+          this.cb.onChat(msg.text.slice(0, 1000));
+        } else if (msg.t === "spark" && typeof msg.text === "string") {
+          this.cb.onSpark(msg.text);
         } else if (msg.t === "ctrl" && typeof msg.ctrl === "string") {
           this.cb.onControl(msg.ctrl as PeerControl);
         }
@@ -131,6 +134,10 @@ export class PeerSession {
 
   sendChat(text: string) {
     this.safeSend({ t: "chat", text });
+  }
+
+  sendSpark(text: string) {
+    this.safeSend({ t: "spark", text });
   }
 
   sendControl(ctrl: PeerControl) {

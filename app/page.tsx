@@ -9,7 +9,9 @@ import VideoPanel from "./components/VideoPanel";
 import { AuthError, join, leave, poll, sendSignal } from "@/lib/api";
 import { PeerSession, type DescType, type PeerControl } from "@/lib/webrtc";
 import { POLL_INTERVAL_MS } from "@/lib/presence";
-import { type PeerDot, type SignalMsg } from "@/lib/types";
+import { type Link, type PeerDot, type SignalMsg } from "@/lib/types";
+import { DEFAULT_VIBE, SPARKS, VIBES, pickSpark, vibeById } from "@/lib/vibes";
+import { EyeIcon, ShieldIcon, SparkIcon } from "./components/icons";
 
 type Conn =
   | { kind: "idle" }
@@ -25,6 +27,12 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export default function Home() {
   const [phase, setPhase] = useState<"gate" | "live">("gate");
   const [peers, setPeers] = useState<PeerDot[]>([]);
+  const [links, setLinks] = useState<Link[]>([]);
+  const [vibeFilter, setVibeFilter] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<ReadonlySet<string>>(new Set());
+  const blockedRef = useRef(blocked);
+  const [peerVibe, setPeerVibe] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -52,6 +60,9 @@ export default function Home() {
   const peerRef = useRef<PeerSession | null>(null);
   // Raw location stays in memory only, used to re-join if the session expires.
   const rawLocation = useRef<{ lat: number; lng: number } | null>(null);
+  const myVibe = useRef(DEFAULT_VIBE);
+  const peersRef = useRef<PeerDot[]>([]);
+  const usedSparks = useRef<Set<number>>(new Set());
   const msgId = useRef(0);
   const requestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,6 +82,7 @@ export default function Home() {
     setRemoteStream(null);
     setMicOn(true);
     setCamOn(true);
+    setRevealed(false);
     setVideo("none");
   }
 
@@ -80,6 +92,8 @@ export default function Home() {
     peerRef.current = null;
     resetVideoState();
     setMessages([]);
+    setPeerVibe(null);
+    usedSparks.current.clear();
     setConn({ kind: "idle" });
     if (message) showNotice(message);
   }
@@ -90,6 +104,11 @@ export default function Home() {
         void sendSignal(peerId, type, payload);
       },
       onChat: (text) => addMessage(false, text),
+      // Only known prompts render as a spark card, so a stranger can't fake
+      // "system" messages.
+      onSpark: (text) => {
+        if (SPARKS.includes(text)) addMessage(false, text, "system");
+      },
       onControl: (ctrl) => handleControl(ctrl),
       onRemoteStream: (stream) => setRemoteStream(stream),
       onConnectionState: (state) => {
@@ -137,8 +156,38 @@ export default function Home() {
     }
   }
 
+  function vibeOf(peerId: string): string | null {
+    return peersRef.current.find((p) => p.id === peerId)?.vibe ?? null;
+  }
+
+  function sendSpark() {
+    const ps = peerRef.current;
+    if (!ps) return;
+    const i = pickSpark(usedSparks.current);
+    ps.sendSpark(SPARKS[i]);
+    addMessage(true, SPARKS[i], "system");
+  }
+
+  function blockPeer() {
+    const c = connRef.current;
+    if (c.kind === "idle") return;
+    const next = new Set(blockedRef.current);
+    next.add(c.peerId);
+    blockedRef.current = next;
+    setBlocked(next);
+    if (c.kind === "incoming") {
+      void sendSignal(c.peerId, "decline");
+      setConn({ kind: "idle" });
+      showNotice("Blocked. Their light is hidden for this visit.");
+      return;
+    }
+    endConnection();
+    showNotice("Blocked. Their light is hidden for this visit.");
+  }
+
   function requestConnection(peerId: string) {
     if (connRef.current.kind !== "idle") return;
+    setPeerVibe(vibeOf(peerId));
     setConn({ kind: "requesting", peerId });
     void sendSignal(peerId, "request").then((ok) => {
       if (!ok && connRef.current.kind === "requesting") {
@@ -166,6 +215,7 @@ export default function Home() {
   function acceptIncoming() {
     if (connRef.current.kind !== "incoming") return;
     const peerId = connRef.current.peerId;
+    setPeerVibe(vibeOf(peerId));
     startPeer(peerId, false);
     void sendSignal(peerId, "accept").then((ok) => {
       if (!ok) teardown("That request expired.");
@@ -236,7 +286,9 @@ export default function Home() {
   function processSignal(sig: SignalMsg) {
     switch (sig.type) {
       case "request": {
-        if (connRef.current.kind === "idle") {
+        if (blockedRef.current.has(sig.fromId)) {
+          void sendSignal(sig.fromId, "decline");
+        } else if (connRef.current.kind === "idle") {
           setConn({ kind: "incoming", peerId: sig.fromId });
         } else {
           void sendSignal(sig.fromId, "decline");
@@ -306,14 +358,20 @@ export default function Home() {
       try {
         const data = await poll();
         if (!active) return;
+        peersRef.current = data.peers;
         setPeers(data.peers);
+        setLinks(data.links);
         for (const s of data.signals) processSignalRef.current(s);
       } catch (err) {
         // Session reaped (e.g. tab was asleep): start a fresh one.
         if (err instanceof AuthError && active && rawLocation.current) {
           teardownRef.current();
           try {
-            const r = await join(rawLocation.current.lat, rawLocation.current.lng);
+            const r = await join(
+              rawLocation.current.lat,
+              rawLocation.current.lng,
+              myVibe.current,
+            );
             setMyLocation({ lat: r.lat, lng: r.lng });
           } catch {}
         }
@@ -339,16 +397,27 @@ export default function Home() {
     };
   }, [phase]);
 
-  async function handleReady(lat: number, lng: number) {
+  async function handleReady(lat: number, lng: number, vibe: string) {
     rawLocation.current = { lat, lng };
-    const r = await join(lat, lng);
+    myVibe.current = vibe;
+    const r = await join(lat, lng, vibe);
     // Show the user where OTHERS see them (the offset position).
     setMyLocation({ lat: r.lat, lng: r.lng });
     setPhase("live");
   }
 
   const inChat = conn.kind === "connecting" || conn.kind === "connected";
-  const freeCount = peers.filter((p) => !p.busy).length;
+  const visiblePeers = peers.filter((p) => !blocked.has(p.id));
+  const freeCount = visiblePeers.filter((p) => !p.busy).length;
+  const incomingVibe =
+    conn.kind === "incoming"
+      ? vibeById(peers.find((p) => p.id === conn.peerId)?.vibe)
+      : null;
+  const partnerVibe = peerVibe ? vibeById(peerVibe) : null;
+  const vibeCounts = new Map<string, number>();
+  for (const p of visiblePeers) {
+    if (!p.busy) vibeCounts.set(p.vibe, (vibeCounts.get(p.vibe) ?? 0) + 1);
+  }
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-night text-moon">
@@ -359,6 +428,9 @@ export default function Home() {
         canConnect={conn.kind === "idle"}
         spinning={phase === "gate"}
         ringingId={conn.kind === "requesting" ? conn.peerId : null}
+        links={links}
+        vibeFilter={vibeFilter}
+        hiddenIds={blocked}
       />
 
       {phase === "gate" && <EntryGate onReady={handleReady} />}
@@ -370,30 +442,70 @@ export default function Home() {
             <span className="ml-1.5 inline-block h-2 w-2 animate-breathe rounded-full bg-amber align-middle" />
           </p>
           <p className="glass rounded-full px-4 py-2 text-sm" aria-live="polite">
-            <span className="font-bold text-amber">{peers.length}</span>{" "}
-            {peers.length === 1 ? "light" : "lights"} on
-            {peers.length > 0 && (
+            <span className="font-bold text-amber">{visiblePeers.length}</span>{" "}
+            {visiblePeers.length === 1 ? "light" : "lights"} on
+            {links.length > 0 && (
+              <span className="text-moon/55">
+                , {links.length} {links.length === 1 ? "conversation" : "conversations"}
+              </span>
+            )}
+            {visiblePeers.length > 0 && (
               <span className="text-moon/55">, {freeCount} free to talk</span>
             )}
           </p>
         </header>
       )}
 
-      {phase === "live" && conn.kind === "idle" && peers.length === 0 && (
+      {phase === "live" && conn.kind === "idle" && visiblePeers.length === 0 && (
         <p className="glass pointer-events-none absolute bottom-6 left-1/2 z-10 w-[min(92vw,26rem)] -translate-x-1/2 animate-rise rounded-2xl px-5 py-3 text-center text-sm text-moon/75">
           You&rsquo;re the only light right now. Share the link, or keep this
           tab open and someone will show up.
         </p>
       )}
 
-      {phase === "live" &&
-        conn.kind === "idle" &&
-        peers.length > 0 &&
-        !notice && (
-          <p className="pointer-events-none absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-sm text-moon/60">
-            Tap a glowing light to say hello
+      {phase === "live" && conn.kind === "idle" && visiblePeers.length > 0 && (
+        <nav
+          aria-label="Filter lights by vibe"
+          className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        >
+          <p className="pointer-events-none text-sm text-moon/60">
+            {vibeFilter
+              ? `Showing people up for ${vibeById(vibeFilter).label.toLowerCase()}`
+              : "Tap a glowing light to say hello"}
           </p>
-        )}
+          <div className="glass flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5">
+            <button
+              onClick={() => setVibeFilter(null)}
+              aria-pressed={vibeFilter === null}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                vibeFilter === null ? "bg-moon text-night" : "text-moon/75 hover:bg-moon/10"
+              }`}
+            >
+              Everyone
+            </button>
+            {VIBES.map((v) => {
+              const on = vibeFilter === v.id;
+              const n = vibeCounts.get(v.id) ?? 0;
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setVibeFilter(on ? null : v.id)}
+                  aria-pressed={on}
+                  title={v.label}
+                  aria-label={`${v.label}, ${n} free`}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm transition ${
+                    on ? "text-night" : "text-moon/75 hover:bg-moon/10"
+                  }`}
+                  style={on ? { background: v.color } : undefined}
+                >
+                  <span aria-hidden>{v.emoji}</span>
+                  <span className="tabular-nums">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {notice && (
         <div
@@ -425,7 +537,8 @@ export default function Home() {
       {conn.kind === "incoming" && (
         <ConnectionPrompt
           title="Someone wants to talk"
-          subtitle="A stranger tapped your light."
+          subtitle={`They're up for ${incomingVibe?.label.toLowerCase() ?? "a chat"}.`}
+          badge={incomingVibe?.emoji}
           acceptLabel="Say hello"
           declineLabel="Not now"
           onAccept={acceptIncoming}
@@ -445,6 +558,35 @@ export default function Home() {
           }}
           onStartVideo={startVideoRequest}
           onEnd={endConnection}
+          headerExtra={
+            partnerVibe ? (
+              <span
+                title={partnerVibe.label}
+                className="rounded-full px-2.5 py-1 text-sm"
+                style={{ background: `${partnerVibe.color}26`, color: partnerVibe.color }}
+              >
+                {partnerVibe.emoji}
+              </span>
+            ) : null
+          }
+          toolbar={
+            conn.kind === "connected" ? (
+              <div className="flex gap-2 px-3 pt-2">
+                <button
+                  onClick={sendSpark}
+                  className="flex items-center gap-1.5 rounded-full border border-amber/35 px-3.5 py-1.5 text-sm font-semibold text-amber transition hover:bg-amber/10"
+                >
+                  <SparkIcon className="h-4 w-4" /> Spark
+                </button>
+                <button
+                  onClick={blockPeer}
+                  className="ml-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm text-moon/55 transition hover:bg-danger/15 hover:text-danger"
+                >
+                  <ShieldIcon className="h-4 w-4" /> Block and leave
+                </button>
+              </div>
+            ) : null
+          }
         />
       )}
 
@@ -477,6 +619,26 @@ export default function Home() {
           onToggleMic={toggleMic}
           onToggleCam={toggleCam}
           onEnd={endVideo}
+          overlay={
+            remoteStream && !revealed ? (
+              <div className="absolute inset-0 grid place-items-center bg-night/30 p-6 backdrop-blur-[48px]">
+                <div className="max-w-xs text-center">
+                  <ShieldIcon className="mx-auto h-9 w-9 text-aurora" />
+                  <p className="mt-3 text-lg font-bold">Their video is blurred</p>
+                  <p className="mt-1 text-sm text-moon/70">
+                    You can already hear each other. Reveal the picture when
+                    you&rsquo;re comfortable.
+                  </p>
+                  <button
+                    onClick={() => setRevealed(true)}
+                    className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-moon px-5 py-3 font-bold text-night transition hover:brightness-95"
+                  >
+                    <EyeIcon /> Show their video
+                  </button>
+                </div>
+              </div>
+            ) : null
+          }
         />
       )}
     </main>
