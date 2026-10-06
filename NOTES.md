@@ -5,7 +5,7 @@ Git history is split into small commits that follow the same order.
 
 ## Setup decisions
 
-- **Database:** Supabase Postgres instead of Neon (both are plain Postgres; Prisma connects the same way). Locally `DATABASE_URL` is the session pooler (port 5432), which works for `prisma db push` and the app. On Vercel it is the transaction pooler (port 6543, `?pgbouncer=true`), which suits short-lived serverless connections. The code already avoids interactive transactions, so it is safe behind PgBouncer.
+- **Database:** Supabase Postgres instead of Neon (both are plain Postgres; Prisma connects the same way). Locally `DATABASE_URL` is the session pooler (port 5432), which works for `prisma db push` and the app. On Vercel it is the transaction pooler (port 6543), which suits short-lived serverless connections. Prisma 7 talks to Postgres through the `pg` driver adapter, which uses unnamed prepared statements, so no `pgbouncer` flag is needed. The code already avoids interactive transactions, so it is safe behind PgBouncer.
 - **Schema changes** ship as migrations in `prisma/migrations` and also work with `npx prisma db push` as the README describes.
 
 ---
